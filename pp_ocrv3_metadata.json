@@ -1,0 +1,870 @@
+{
+    "image": "cropped_frame.png",
+    "width": 1084,
+    "height": 1080,
+    "ocr_engine": "PaddleOCR (ONNX)",
+    "blocks": [
+        {
+            "id": 1,
+            "type": "text",
+            "text": "This AI ML certification is designed to enhance your career in AI and ML by demystifying concepts like ML, DL, NLP, computer",
+            "confidence": 0.97,
+            "bbox": {
+                "x_min": 34,
+                "y_min": 28,
+                "x_max": 813,
+                "y_max": 50
+            },
+            "width": 779,
+            "height": 22,
+            "center_x": 424,
+            "center_y": 39,
+            "font_height": 22,
+            "line_id": 1,
+            "order_index": 1
+        },
+        {
+            "id": 2,
+            "type": "text",
+            "text": "vision, generative Al, prompt engineering, and more. You'll also receive access to dedicated live sessions led by industry",
+            "confidence": 0.98,
+            "bbox": {
+                "x_min": 34,
+                "y_min": 51,
+                "x_max": 779,
+                "y_max": 72
+            },
+            "width": 745,
+            "height": 21,
+            "center_x": 406,
+            "center_y": 62,
+            "font_height": 21,
+            "line_id": 2,
+            "order_index": 2
+        },
+        {
+            "id": 3,
+            "type": "text",
+            "text": "experts covering the latest trends in AI, such as generative modeling, ChatGPT, explainable AI, and more.",
+            "confidence": 0.98,
+            "bbox": {
+                "x_min": 35,
+                "y_min": 73,
+                "x_max": 683,
+                "y_max": 93
+            },
+            "width": 648,
+            "height": 20,
+            "center_x": 359,
+            "center_y": 83,
+            "font_height": 20,
+            "line_id": 3,
+            "order_index": 3
+        },
+        {
+            "id": 4,
+            "type": "text",
+            "text": "Key Features",
+            "confidence": 0.92,
+            "bbox": {
+                "x_min": 36,
+                "y_min": 146,
+                "x_max": 186,
+                "y_max": 172
+            },
+            "width": 150,
+            "height": 26,
+            "center_x": 111,
+            "center_y": 159,
+            "font_height": 26,
+            "line_id": 4,
+            "order_index": 4
+        },
+        {
+            "id": 5,
+            "type": "text",
+            "text": "O Program completion certificate from",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 38,
+                "y_min": 209,
+                "x_max": 332,
+                "y_max": 228
+            },
+            "width": 294,
+            "height": 19,
+            "center_x": 185,
+            "center_y": 218,
+            "font_height": 19,
+            "line_id": 5,
+            "order_index": 5
+        },
+        {
+            "id": 6,
+            "type": "text",
+            "text": " Live-online masterclasses delivered",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 397,
+                "y_min": 207,
+                "x_max": 687,
+                "y_max": 230
+            },
+            "width": 290,
+            "height": 23,
+            "center_x": 542,
+            "center_y": 218,
+            "font_height": 23,
+            "line_id": 5,
+            "order_index": 6
+        },
+        {
+            "id": 7,
+            "type": "text",
+            "text": "Live interactive sessions on the",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 784,
+                "y_min": 208,
+                "x_max": 1014,
+                "y_max": 227
+            },
+            "width": 230,
+            "height": 19,
+            "center_x": 899,
+            "center_y": 218,
+            "font_height": 19,
+            "line_id": 5,
+            "order_index": 7
+        },
+        {
+            "id": 8,
+            "type": "text",
+            "text": "Purdue University and Simplilearn",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 70,
+                "y_min": 233,
+                "x_max": 311,
+                "y_max": 252
+            },
+            "width": 241,
+            "height": 19,
+            "center_x": 190,
+            "center_y": 242,
+            "font_height": 19,
+            "line_id": 6,
+            "order_index": 8
+        },
+        {
+            "id": 9,
+            "type": "text",
+            "text": "by Purdue faculty and IBM experts",
+            "confidence": 0.95,
+            "bbox": {
+                "x_min": 428,
+                "y_min": 233,
+                "x_max": 676,
+                "y_max": 252
+            },
+            "width": 248,
+            "height": 19,
+            "center_x": 552,
+            "center_y": 242,
+            "font_height": 19,
+            "line_id": 6,
+            "order_index": 9
+        },
+        {
+            "id": 10,
+            "type": "text",
+            "text": "Iatest AI trends, such as ChatGPT,",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 788,
+                "y_min": 233,
+                "x_max": 1031,
+                "y_max": 252
+            },
+            "width": 243,
+            "height": 19,
+            "center_x": 910,
+            "center_y": 242,
+            "font_height": 19,
+            "line_id": 6,
+            "order_index": 10
+        },
+        {
+            "id": 11,
+            "type": "text",
+            "text": "generative Al, prompt engineering.",
+            "confidence": 0.97,
+            "bbox": {
+                "x_min": 787,
+                "y_min": 256,
+                "x_max": 1034,
+                "y_max": 279
+            },
+            "width": 247,
+            "height": 23,
+            "center_x": 910,
+            "center_y": 268,
+            "font_height": 23,
+            "line_id": 7,
+            "order_index": 11
+        },
+        {
+            "id": 12,
+            "type": "text",
+            "text": "and more",
+            "confidence": 0.89,
+            "bbox": {
+                "x_min": 786,
+                "y_min": 280,
+                "x_max": 862,
+                "y_max": 303
+            },
+            "width": 76,
+            "height": 23,
+            "center_x": 824,
+            "center_y": 292,
+            "font_height": 23,
+            "line_id": 8,
+            "order_index": 12
+        },
+        {
+            "id": 13,
+            "type": "text",
+            "text": " Core curriculum delivered in live",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 59,
+                "y_min": 336,
+                "x_max": 298,
+                "y_max": 356
+            },
+            "width": 239,
+            "height": 20,
+            "center_x": 178,
+            "center_y": 346,
+            "font_height": 20,
+            "line_id": 9,
+            "order_index": 13
+        },
+        {
+            "id": 14,
+            "type": "text",
+            "text": " Simplilearn's JobAssist helps you get",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 396,
+                "y_min": 335,
+                "x_max": 696,
+                "y_max": 358
+            },
+            "width": 300,
+            "height": 23,
+            "center_x": 546,
+            "center_y": 346,
+            "font_height": 23,
+            "line_id": 9,
+            "order_index": 14
+        },
+        {
+            "id": 15,
+            "type": "text",
+            "text": " Gain exposure to ChatGPT, OpenAI,",
+            "confidence": 0.93,
+            "bbox": {
+                "x_min": 753,
+                "y_min": 334,
+                "x_max": 1040,
+                "y_max": 358
+            },
+            "width": 287,
+            "height": 24,
+            "center_x": 896,
+            "center_y": 346,
+            "font_height": 24,
+            "line_id": 9,
+            "order_index": 15
+        },
+        {
+            "id": 16,
+            "type": "text",
+            "text": "classes by industry experts",
+            "confidence": 0.95,
+            "bbox": {
+                "x_min": 70,
+                "y_min": 361,
+                "x_max": 266,
+                "y_max": 380
+            },
+            "width": 196,
+            "height": 19,
+            "center_x": 168,
+            "center_y": 370,
+            "font_height": 19,
+            "line_id": 10,
+            "order_index": 16
+        },
+        {
+            "id": 17,
+            "type": "text",
+            "text": "noticed by top hiring companies",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 429,
+                "y_min": 361,
+                "x_max": 659,
+                "y_max": 380
+            },
+            "width": 230,
+            "height": 19,
+            "center_x": 544,
+            "center_y": 370,
+            "font_height": 19,
+            "line_id": 10,
+            "order_index": 17
+        },
+        {
+            "id": 18,
+            "type": "text",
+            "text": "Dall-E, Midjourney & other prominent",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 787,
+                "y_min": 361,
+                "x_max": 1050,
+                "y_max": 380
+            },
+            "width": 263,
+            "height": 19,
+            "center_x": 918,
+            "center_y": 370,
+            "font_height": 19,
+            "line_id": 10,
+            "order_index": 18
+        },
+        {
+            "id": 19,
+            "type": "text",
+            "text": "tools",
+            "confidence": 0.83,
+            "bbox": {
+                "x_min": 786,
+                "y_min": 385,
+                "x_max": 830,
+                "y_max": 405
+            },
+            "width": 44,
+            "height": 20,
+            "center_x": 808,
+            "center_y": 395,
+            "font_height": 20,
+            "line_id": 11,
+            "order_index": 19
+        },
+        {
+            "id": 20,
+            "type": "text",
+            "text": " 3 capstones and 25+ hands-on",
+            "confidence": 0.93,
+            "bbox": {
+                "x_min": 38,
+                "y_min": 441,
+                "x_max": 292,
+                "y_max": 460
+            },
+            "width": 254,
+            "height": 19,
+            "center_x": 165,
+            "center_y": 450,
+            "font_height": 19,
+            "line_id": 12,
+            "order_index": 20
+        },
+        {
+            "id": 21,
+            "type": "text",
+            "text": " Access to Purdue's alumni",
+            "confidence": 0.93,
+            "bbox": {
+                "x_min": 394,
+                "y_min": 435,
+                "x_max": 622,
+                "y_max": 464
+            },
+            "width": 228,
+            "height": 29,
+            "center_x": 508,
+            "center_y": 450,
+            "font_height": 29,
+            "line_id": 12,
+            "order_index": 21
+        },
+        {
+            "id": 22,
+            "type": "text",
+            "text": " Exclusive hackathons and Ask Me",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 754,
+                "y_min": 439,
+                "x_max": 1034,
+                "y_max": 461
+            },
+            "width": 280,
+            "height": 22,
+            "center_x": 894,
+            "center_y": 450,
+            "font_height": 22,
+            "line_id": 12,
+            "order_index": 22
+        },
+        {
+            "id": 23,
+            "type": "text",
+            "text": "projects from various industry",
+            "confidence": 0.97,
+            "bbox": {
+                "x_min": 68,
+                "y_min": 463,
+                "x_max": 287,
+                "y_max": 487
+            },
+            "width": 219,
+            "height": 24,
+            "center_x": 178,
+            "center_y": 475,
+            "font_height": 24,
+            "line_id": 13,
+            "order_index": 23
+        },
+        {
+            "id": 24,
+            "type": "text",
+            "text": "association membership on program",
+            "confidence": 0.96,
+            "bbox": {
+                "x_min": 428,
+                "y_min": 466,
+                "x_max": 694,
+                "y_max": 485
+            },
+            "width": 266,
+            "height": 19,
+            "center_x": 561,
+            "center_y": 476,
+            "font_height": 19,
+            "line_id": 13,
+            "order_index": 24
+        },
+        {
+            "id": 25,
+            "type": "text",
+            "text": "Anything sessions by IBM",
+            "confidence": 0.95,
+            "bbox": {
+                "x_min": 786,
+                "y_min": 464,
+                "x_max": 974,
+                "y_max": 486
+            },
+            "width": 188,
+            "height": 22,
+            "center_x": 880,
+            "center_y": 475,
+            "font_height": 22,
+            "line_id": 13,
+            "order_index": 25
+        },
+        {
+            "id": 26,
+            "type": "text",
+            "text": "domains",
+            "confidence": 0.87,
+            "bbox": {
+                "x_min": 70,
+                "y_min": 489,
+                "x_max": 137,
+                "y_max": 508
+            },
+            "width": 67,
+            "height": 19,
+            "center_x": 104,
+            "center_y": 498,
+            "font_height": 19,
+            "line_id": 14,
+            "order_index": 26
+        },
+        {
+            "id": 27,
+            "type": "text",
+            "text": "completion",
+            "confidence": 0.9,
+            "bbox": {
+                "x_min": 428,
+                "y_min": 489,
+                "x_max": 515,
+                "y_max": 508
+            },
+            "width": 87,
+            "height": 19,
+            "center_x": 472,
+            "center_y": 498,
+            "font_height": 19,
+            "line_id": 14,
+            "order_index": 27
+        },
+        {
+            "id": 28,
+            "type": "text",
+            "text": "AI ML Certification Course Advantage",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 35,
+                "y_min": 660,
+                "x_max": 608,
+                "y_max": 694
+            },
+            "width": 573,
+            "height": 34,
+            "center_x": 322,
+            "center_y": 677,
+            "font_height": 34,
+            "line_id": 15,
+            "order_index": 28
+        },
+        {
+            "id": 29,
+            "type": "text",
+            "text": "Our curriculum equips you with the skills and knowledge to excel in your career. With a structured learning approach and industry-relevant",
+            "confidence": 0.99,
+            "bbox": {
+                "x_min": 35,
+                "y_min": 712,
+                "x_max": 890,
+                "y_max": 735
+            },
+            "width": 855,
+            "height": 23,
+            "center_x": 462,
+            "center_y": 724,
+            "font_height": 23,
+            "line_id": 16,
+            "order_index": 29
+        },
+        {
+            "id": 30,
+            "type": "text",
+            "text": " projects, you will be able to tackle complex challenges and stay at the forefront of this field.",
+            "confidence": 0.98,
+            "bbox": {
+                "x_min": 33,
+                "y_min": 735,
+                "x_max": 604,
+                "y_max": 758
+            },
+            "width": 571,
+            "height": 23,
+            "center_x": 318,
+            "center_y": 746,
+            "font_height": 23,
+            "line_id": 17,
+            "order_index": 30
+        },
+        {
+            "id": 31,
+            "type": "text",
+            "text": "PURDUE",
+            "confidence": 0.86,
+            "bbox": {
+                "x_min": 186,
+                "y_min": 864,
+                "x_max": 324,
+                "y_max": 890
+            },
+            "width": 138,
+            "height": 26,
+            "center_x": 255,
+            "center_y": 877,
+            "font_height": 26,
+            "line_id": 18,
+            "order_index": 31
+        },
+        {
+            "id": 32,
+            "type": "text",
+            "text": "UNIVERSITY.",
+            "confidence": 0.9,
+            "bbox": {
+                "x_min": 228,
+                "y_min": 884,
+                "x_max": 324,
+                "y_max": 899
+            },
+            "width": 96,
+            "height": 15,
+            "center_x": 276,
+            "center_y": 892,
+            "font_height": 15,
+            "line_id": 18,
+            "order_index": 32
+        },
+        {
+            "id": 33,
+            "type": "text",
+            "text": "sim",
+            "confidence": 0.75,
+            "bbox": {
+                "x_min": 348,
+                "y_min": 875,
+                "x_max": 383,
+                "y_max": 895
+            },
+            "width": 35,
+            "height": 20,
+            "center_x": 366,
+            "center_y": 885,
+            "font_height": 20,
+            "line_id": 18,
+            "order_index": 33
+        },
+        {
+            "id": 34,
+            "type": "text",
+            "text": "This is to certify that",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 252,
+                "y_min": 923,
+                "x_max": 375,
+                "y_max": 942
+            },
+            "width": 123,
+            "height": 19,
+            "center_x": 314,
+            "center_y": 932,
+            "font_height": 19,
+            "line_id": 19,
+            "order_index": 34
+        },
+        {
+            "id": 35,
+            "type": "text",
+            "text": "Tohn Doe",
+            "confidence": 0.88,
+            "bbox": {
+                "x_min": 239,
+                "y_min": 946,
+                "x_max": 394,
+                "y_max": 981
+            },
+            "width": 155,
+            "height": 35,
+            "center_x": 316,
+            "center_y": 964,
+            "font_height": 35,
+            "line_id": 20,
+            "order_index": 35
+        },
+        {
+            "id": 36,
+            "type": "text",
+            "text": "John Doe",
+            "confidence": 0.84,
+            "bbox": {
+                "x_min": 837,
+                "y_min": 943,
+                "x_max": 924,
+                "y_max": 962
+            },
+            "width": 87,
+            "height": 19,
+            "center_x": 880,
+            "center_y": 952,
+            "font_height": 19,
+            "line_id": 20,
+            "order_index": 36
+        },
+        {
+            "id": 37,
+            "type": "text",
+            "text": "has successfully completed the",
+            "confidence": 0.94,
+            "bbox": {
+                "x_min": 228,
+                "y_min": 984,
+                "x_max": 400,
+                "y_max": 1004
+            },
+            "width": 172,
+            "height": 20,
+            "center_x": 314,
+            "center_y": 994,
+            "font_height": 20,
+            "line_id": 21,
+            "order_index": 37
+        },
+        {
+            "id": 38,
+            "type": "text",
+            "text": "Python for Data Science",
+            "confidence": 0.93,
+            "bbox": {
+                "x_min": 780,
+                "y_min": 988,
+                "x_max": 974,
+                "y_max": 1007
+            },
+            "width": 194,
+            "height": 19,
+            "center_x": 877,
+            "center_y": 998,
+            "font_height": 19,
+            "line_id": 21,
+            "order_index": 38
+        },
+        {
+            "id": 39,
+            "type": "text",
+            "text": "POST GRADUATE PROGRAM IN",
+            "confidence": 0.91,
+            "bbox": {
+                "x_min": 184,
+                "y_min": 1009,
+                "x_max": 442,
+                "y_max": 1028
+            },
+            "width": 258,
+            "height": 19,
+            "center_x": 313,
+            "center_y": 1018,
+            "font_height": 19,
+            "line_id": 22,
+            "order_index": 39
+        },
+        {
+            "id": 40,
+            "type": "text",
+            "text": "(DS0101EN.provided by BigDataUniver",
+            "confidence": 0.81,
+            "bbox": {
+                "x_min": 802,
+                "y_min": 1011,
+                "x_max": 946,
+                "y_max": 1023
+            },
+            "width": 144,
+            "height": 12,
+            "center_x": 874,
+            "center_y": 1017,
+            "font_height": 12,
+            "line_id": 22,
+            "order_index": 40
+        },
+        {
+            "id": 41,
+            "type": "text",
+            "text": "AI AND MACHINE LEARNING",
+            "confidence": 0.91,
+            "bbox": {
+                "x_min": 193,
+                "y_min": 1034,
+                "x_max": 432,
+                "y_max": 1052
+            },
+            "width": 239,
+            "height": 18,
+            "center_x": 312,
+            "center_y": 1043,
+            "font_height": 18,
+            "line_id": 23,
+            "order_index": 41
+        },
+        {
+            "id": 42,
+            "type": "text",
+            "text": "on 9b April 2023",
+            "confidence": 0.87,
+            "bbox": {
+                "x_min": 271,
+                "y_min": 1055,
+                "x_max": 353,
+                "y_max": 1074
+            },
+            "width": 82,
+            "height": 19,
+            "center_x": 312,
+            "center_y": 1064,
+            "font_height": 19,
+            "line_id": 24,
+            "order_index": 42
+        },
+        {
+            "id": 43,
+            "type": "text",
+            "text": "simollearn",
+            "confidence": 0.81,
+            "bbox": {
+                "x_min": 856,
+                "y_min": 1070,
+                "x_max": 903,
+                "y_max": 1078
+            },
+            "width": 47,
+            "height": 8,
+            "center_x": 880,
+            "center_y": 1074,
+            "font_height": 8,
+            "line_id": 24,
+            "order_index": 43
+        },
+        {
+            "id": 44,
+            "type": "text",
+            "text": "Isord by",
+            "confidence": 0.71,
+            "bbox": {
+                "x_min": 863,
+                "y_min": 1051,
+                "x_max": 899,
+                "y_max": 1067
+            },
+            "width": 36,
+            "height": 16,
+            "center_x": 881,
+            "center_y": 1059,
+            "font_height": 16,
+            "line_id": 24,
+            "order_index": 44
+        }
+    ],
+    "reconstructed_text": [
+        "This AI ML certification is designed to enhance your career in AI and ML by demystifying concepts like ML, DL, NLP, computer",
+        "vision, generative Al, prompt engineering, and more. You'll also receive access to dedicated live sessions led by industry",
+        "experts covering the latest trends in AI, such as generative modeling, ChatGPT, explainable AI, and more.",
+        "Key Features",
+        "O Program completion certificate from  Live-online masterclasses delivered Live interactive sessions on the",
+        "Purdue University and Simplilearn by Purdue faculty and IBM experts Iatest AI trends, such as ChatGPT,",
+        "generative Al, prompt engineering.",
+        "and more",
+        " Core curriculum delivered in live  Simplilearn's JobAssist helps you get  Gain exposure to ChatGPT, OpenAI,",
+        "classes by industry experts noticed by top hiring companies Dall-E, Midjourney & other prominent",
+        "tools",
+        " 3 capstones and 25+ hands-on  Access to Purdue's alumni  Exclusive hackathons and Ask Me",
+        "projects from various industry association membership on program Anything sessions by IBM",
+        "domains completion",
+        "AI ML Certification Course Advantage",
+        "Our curriculum equips you with the skills and knowledge to excel in your career. With a structured learning approach and industry-relevant",
+        " projects, you will be able to tackle complex challenges and stay at the forefront of this field.",
+        "PURDUE UNIVERSITY. sim",
+        "This is to certify that",
+        "Tohn Doe John Doe",
+        "has successfully completed the Python for Data Science",
+        "POST GRADUATE PROGRAM IN (DS0101EN.provided by BigDataUniver",
+        "AI AND MACHINE LEARNING",
+        "on 9b April 2023 simollearn Isord by"
+    ]
+}
