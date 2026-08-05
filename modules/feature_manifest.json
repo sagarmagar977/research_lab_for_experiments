@@ -1,0 +1,119 @@
+[
+    {
+        "name": "brightness",
+        "description": "Average intensity of grayscale pixels",
+        "formula": "mean(gray_pixels)",
+        "range": "[0.0, 255.0]",
+        "type": "float",
+        "dependencies": "Image convert to grayscale",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "contrast",
+        "description": "Standard deviation of grayscale intensity values",
+        "formula": "std(gray_pixels)",
+        "range": "[0.0, 127.5]",
+        "type": "float",
+        "dependencies": "Image convert to grayscale",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "entropy",
+        "description": "Shannon entropy measuring color/intensity distribution randomness",
+        "formula": "-sum(p * log2(p))",
+        "range": "[0.0, 8.0]",
+        "type": "float",
+        "dependencies": "Grayscale histogram probability vector",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "edge_density",
+        "description": "Ratio of Canny edge pixels to total image pixels",
+        "formula": "sum(edge_pixels == 255) / total_pixels",
+        "range": "[0.0, 1.0]",
+        "type": "float",
+        "dependencies": "EdgeExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "text_occupancy",
+        "description": "Ratio of morphological binarized text pixels to total pixels",
+        "formula": "sum(mask == 255) / total_pixels",
+        "range": "[0.0, 1.0]",
+        "type": "float",
+        "dependencies": "MorphologyExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "rgb_hist_dist_global",
+        "description": "Pairwise comparison of concatenated R, G, B channels histograms",
+        "formula": "cv2.compareHist(H_a, H_b, metric)",
+        "range": "Dependent on metric (Correlation: [-1, 1], Bhattacharyya: [0, 1], Chi-Square: [0, inf), Intersection: [0, 1])",
+        "type": "float",
+        "dependencies": "HistogramExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "gray_hist_dist_global",
+        "description": "Pairwise comparison of global grayscale channel histograms",
+        "formula": "cv2.compareHist(H_a, H_b, metric)",
+        "range": "Dependent on metric",
+        "type": "float",
+        "dependencies": "HistogramExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "grid_hist_stats",
+        "description": "Grid-cell histogram comparison scores statistics (mean, max, min, var, std) over NxN cells",
+        "formula": "mean/max/min/var/std over N*N cells comparisons",
+        "range": "Dependent on metric",
+        "type": "float",
+        "dependencies": "HistogramExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "whole_edge_density_diff",
+        "description": "Absolute difference in global edge densities",
+        "formula": "abs(density_a - density_b)",
+        "range": "[0.0, 1.0]",
+        "type": "float",
+        "dependencies": "EdgeExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "grid_edge_diff_stats",
+        "description": "Absolute difference in cell edge density statistics (mean, max, min, var, std) over NxN cells",
+        "formula": "mean/max/min/var/std of abs(cell_a_density - cell_b_density)",
+        "range": "[0.0, 1.0]",
+        "type": "float",
+        "dependencies": "EdgeExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "ssim_stats",
+        "description": "Structural similarity index statistics (mean, min, variance) over grayscale dimensions",
+        "formula": "skimage.metrics.structural_similarity",
+        "range": "Mean: [-1, 1], Min: [-1, 1], Var: [0, 1]",
+        "type": "float",
+        "dependencies": "SSIMExtractor",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "mean_absolute_difference",
+        "description": "Average absolute pixel intensity difference across all pixels (MAD)",
+        "formula": "mean(abs(img_a - img_b))",
+        "range": "[0.0, 255.0]",
+        "type": "float",
+        "dependencies": "Direct pixel subtraction",
+        "added_version": "2.0.0"
+    },
+    {
+        "name": "text_occupancy_diff",
+        "description": "Absolute difference in morphological text occupancy ratios",
+        "formula": "abs(occupancy_a - occupancy_b)",
+        "range": "[0.0, 1.0]",
+        "type": "float",
+        "dependencies": "MorphologyExtractor",
+        "added_version": "2.0.0"
+    }
+]
