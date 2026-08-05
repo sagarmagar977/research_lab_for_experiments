@@ -1,7 +1,7 @@
 import unittest
 import json
 from modules.pairwise_feature_lab import FrameFeatures, PairwiseFeatures, PairwiseFeatureConfig
-from modules.pairwise_feature_lab import CSVExporter, MarkdownExporter
+from modules.pairwise_feature_lab import CSVExporter
 
 class TestExporters(unittest.TestCase):
     def test_csv_exporter(self):
@@ -51,9 +51,7 @@ class TestExporters(unittest.TestCase):
         csv_row = CSVExporter.export("fa.png", "fb.png", fa, fb, pf, config)
         self.assertTrue(csv_row.startswith("fa.png,fb.png,2.0.0,2.0.0,1.0.0"))
         
-        md_report = MarkdownExporter.export(fa, fb, pf, config)
-        self.assertIn("Pairwise Feature Vector Experiment Report", md_report)
-        self.assertIn("MAD", md_report)
+
 
 if __name__ == "__main__":
     unittest.main()

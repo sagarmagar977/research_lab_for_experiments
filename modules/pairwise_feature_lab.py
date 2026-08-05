@@ -654,118 +654,7 @@ class CSVExporter:
         # Serialize list as a single comma-separated row
         return ",".join(str(val) for val in all_values)
 
-class MarkdownExporter:
-    @staticmethod
-    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig) -> str:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        explanation = rule_based_explain(fa, fb, pf)
-        
-        report = f"""# Pairwise Feature Vector Experiment Report
-**Date Generated:** {timestamp}
-**Engine Version:** 2.0.0
-**Schema Version:** 2.0.0
 
----
-
-## 1. Experiment Hyperparameters Configuration
-*   **Histogram Bins:** {config.hist_bins}
-*   **Histogram Comparison Metric:** {config.hist_method}
-*   **Color Mode:** {config.color_mode}
-*   **Histogram Grid Size:** {config.hist_grid_size}x{config.hist_grid_size}
-*   **Gaussian Blur Pre-filter:** {config.edge_blur}
-*   **Canny Thresholds (Low/High):** {config.canny_low} / {config.canny_high}
-*   **Edge Grid Size:** {config.edge_grid_size}x{config.edge_grid_size}
-*   **SSIM Window Size:** {config.ssim_win_size}
-*   **SSIM Gaussian Weights:** {config.ssim_gaussian}
-
----
-
-## 2. Extraction Results Summary
-
-### Frame Features (Scalar Metrics)
-| Metric | Frame A | Frame B |
-| :--- | :--- | :--- |
-| Brightness | {fa.brightness:.4f} | {fb.brightness:.4f} |
-| Contrast | {fa.contrast:.4f} | {fb.contrast:.4f} |
-| Shannon Entropy | {fa.entropy:.4f} | {fb.entropy:.4f} |
-| Edge Density | {fa.edge_density:.4f} | {fb.edge_density:.4f} |
-| Text Occupancy | {fa.text_occupancy:.4f} | {fb.text_occupancy:.4f} |
-
-### Comparative Metrics (Pairwise Differences)
-| Metric | Computed Value |
-| :--- | :--- |
-| Global RGB Histogram Distance | {pf.rgb_hist_dist_global:.4f} |
-| Global Gray Histogram Distance | {pf.gray_hist_dist_global:.4f} |
-| Grid RGB Hist Distance (Mean) | {pf.rgb_hist_grid_mean:.4f} |
-| Grid RGB Hist Distance (Max) | {pf.rgb_hist_grid_max:.4f} |
-| Grid RGB Hist Distance (Min) | {pf.rgb_hist_grid_min:.4f} |
-| Grid RGB Hist Distance (Var) | {pf.rgb_hist_grid_var:.4f} |
-| Grid Gray Hist Distance (Mean) | {pf.gray_hist_grid_mean:.4f} |
-| Grid Gray Hist Distance (Max) | {pf.gray_hist_grid_max:.4f} |
-| Grid Gray Hist Distance (Min) | {pf.gray_hist_grid_min:.4f} |
-| Grid Gray Hist Distance (Var) | {pf.gray_hist_grid_var:.4f} |
-| Whole Image Edge Density Diff | {pf.whole_edge_density_diff:.4f} |
-| Grid Edge Difference (Mean) | {pf.grid_edge_mean_diff:.4f} |
-| Grid Edge Difference (Max) | {pf.grid_edge_max_diff:.4f} |
-| Grid Edge Difference (Min) | {pf.grid_edge_min_diff:.4f} |
-| Grid Edge Difference (Var) | {pf.grid_edge_var_diff:.4f} |
-| SSIM (Mean Similarity) | {pf.ssim_mean:.4f} |
-| SSIM (Minimum similarity) | {pf.ssim_min:.4f} |
-| SSIM (Variance) | {pf.ssim_variance:.4f} |
-| Mean Absolute Difference (MAD) | {pf.mean_absolute_difference:.4f} |
-| Text Occupancy Difference | {pf.text_occupancy_diff:.4f} |
-
----
-
-## 3. Structural Modification Analysis
-{explanation}
-"""
-        return report
-
-# ==========================================
-# 7. Rule-Based Interpretation
-# ==========================================
-
-def rule_based_explain(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures) -> str:
-    lines = []
-    
-    # 1. SSIM structural assessment
-    if pf.ssim_mean > 0.98:
-        lines.append("*   **SSIM:** Very high structural similarity (layout identical, tiny changes).")
-    elif pf.ssim_mean > 0.90:
-        lines.append("*   **SSIM:** High structural similarity (same slide template, minor additions).")
-    else:
-        lines.append("*   **SSIM:** Low similarity. Substantial layout structure updates or slide transition.")
-
-    # 2. Histogram differences
-    if pf.gray_hist_dist_global < 0.05:
-        lines.append("*   **Histogram:** Very small appearance difference.")
-    elif pf.gray_hist_dist_global < 0.15:
-        lines.append("*   **Histogram:** Moderate appearance updates.")
-    else:
-        lines.append("*   **Histogram:** Large appearance shifts (colors or layout elements swapped).")
-        
-    # 3. Grid Edge modifications
-    if pf.grid_edge_max_diff > 0.08:
-        lines.append("*   **Edge:** Localized structural change detected (e.g. annotations drawn or bullet points added).")
-    else:
-        lines.append("*   **Edge:** Uniform edge difference across grids.")
-        
-    # 4. Text occupancy additions
-    if pf.text_occupancy_diff > 0.03:
-        lines.append("*   **Text Occupancy:** Text coverage changed. New text blocks likely appeared.")
-        
-    # 5. Overall Synthesis
-    if pf.ssim_mean > 0.95 and pf.text_occupancy_diff > 0.02 and pf.grid_edge_max_diff > 0.05:
-        verdict = "**Overall Verdict:** Likely answer reveal or new text insertion on the same slide structure."
-    elif pf.ssim_mean < 0.88:
-        verdict = "**Overall Verdict:** Slide transition. Completely new layout template detected."
-    elif pf.ssim_mean > 0.98 and pf.mean_absolute_difference < 1.0:
-        verdict = "**Overall Verdict:** Virtually identical frames (static slide)."
-    else:
-        verdict = "**Overall Verdict:** Slide modification with moderate annotations or layout adjustments."
-        
-    return "\n".join(lines) + "\n\n" + verdict
 
 # ==========================================
 # 8. Decoupled Visualizers
@@ -1047,40 +936,25 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    col_rep, col_csv = st.columns(2)
-    with col_rep:
-        st.markdown("#### 🔬 Metric Interpretation & Reports")
-        st.write(rule_based_explain(fa, fb, pf))
-        
-        md_text = MarkdownExporter.export(fa, fb, pf, config)
-        st.download_button(
-            label="📄 Generate Experiment Report (.md)",
-            data=md_text,
-            file_name=f"experiment_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-            mime="text/markdown",
-            use_container_width=True
-        )
-        
-    with col_csv:
-        st.markdown("#### 💾 CSV Export Preview")
-        # Prepare CSV exporter and inject actual frame width/height
-        raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
-        csv_parts = raw_csv_row.split(",")
-        # Inject width and height
-        h_orig, w_orig = img_a_orig.shape[:2]
-        csv_parts[6] = str(w_orig)
-        csv_parts[7] = str(h_orig)
-        final_csv_row = ",".join(csv_parts)
-        
-        st.code(final_csv_row, language="text")
-        
-        st.download_button(
-            label="💾 Download Pairwise Vector CSV (Headerless)",
-            data=final_csv_row,
-            file_name="pairwise_vector.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+    st.markdown("#### 💾 CSV Export Preview")
+    # Prepare CSV exporter and inject actual frame width/height
+    raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
+    csv_parts = raw_csv_row.split(",")
+    # Inject width and height
+    h_orig, w_orig = img_a_orig.shape[:2]
+    csv_parts[6] = str(w_orig)
+    csv_parts[7] = str(h_orig)
+    final_csv_row = ",".join(csv_parts)
+    
+    st.code(final_csv_row, language="text")
+    
+    st.download_button(
+        label="💾 Download Pairwise Vector CSV (Headerless)",
+        data=final_csv_row,
+        file_name="pairwise_vector.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
         
     # --- DEBUG CONSOLE LOGS ---
     st.markdown("---")
