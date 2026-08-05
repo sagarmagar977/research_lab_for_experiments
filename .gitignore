@@ -1,0 +1,15 @@
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.streamlit/config.toml
+sessions/
+.DS_Store
+experiment_report_*.md
+pairwise_vector.csv
+*.mp4
+*.avi
