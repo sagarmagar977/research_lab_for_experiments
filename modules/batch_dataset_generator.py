@@ -106,50 +106,7 @@ def render_batch_dataset_generator():
         csv_rows = []
         
         # Define exact headers matching our clean 120-column output (119 features + 1 target label at the end)
-        headers = [
-            # Frame A features (30)
-            "FrameA_Brightness", "FrameA_Contrast", "FrameA_Entropy", "FrameA_Edge_Density", "FrameA_Text_Occupancy",
-            "FrameA_Global_RGB_Hist_Mean", "FrameA_Global_RGB_Hist_Max", "FrameA_Global_RGB_Hist_Min", "FrameA_Global_RGB_Hist_Var", "FrameA_Global_RGB_Hist_Std",
-            "FrameA_Global_Gray_Hist_Mean", "FrameA_Global_Gray_Hist_Max", "FrameA_Global_Gray_Hist_Min", "FrameA_Global_Gray_Hist_Var", "FrameA_Global_Gray_Hist_Std",
-            "FrameA_Grid_RGB_Hist_Mean", "FrameA_Grid_RGB_Hist_Max", "FrameA_Grid_RGB_Hist_Min", "FrameA_Grid_RGB_Hist_Var", "FrameA_Grid_RGB_Hist_Std",
-            "FrameA_Grid_Gray_Hist_Mean", "FrameA_Grid_Gray_Hist_Max", "FrameA_Grid_Gray_Hist_Min", "FrameA_Grid_Gray_Hist_Var", "FrameA_Grid_Gray_Hist_Std",
-            "FrameA_Grid_Edge_Mean", "FrameA_Grid_Edge_Max", "FrameA_Grid_Edge_Min", "FrameA_Grid_Edge_Var", "FrameA_Grid_Edge_Std",
-            
-            # Frame B features (30)
-            "FrameB_Brightness", "FrameB_Contrast", "FrameB_Entropy", "FrameB_Edge_Density", "FrameB_Text_Occupancy",
-            "FrameB_Global_RGB_Hist_Mean", "FrameB_Global_RGB_Hist_Max", "FrameB_Global_RGB_Hist_Min", "FrameB_Global_RGB_Hist_Var", "FrameB_Global_RGB_Hist_Std",
-            "FrameB_Global_Gray_Hist_Mean", "FrameB_Global_Gray_Hist_Max", "FrameB_Global_Gray_Hist_Min", "FrameB_Global_Gray_Hist_Var", "FrameB_Global_Gray_Hist_Std",
-            "FrameB_Grid_RGB_Hist_Mean", "FrameB_Grid_RGB_Hist_Max", "FrameB_Grid_RGB_Hist_Min", "FrameB_Grid_RGB_Hist_Var", "FrameB_Grid_RGB_Hist_Std",
-            "FrameB_Grid_Gray_Hist_Mean", "FrameB_Grid_Gray_Hist_Max", "FrameB_Grid_Gray_Hist_Min", "FrameB_Grid_Gray_Hist_Var", "FrameB_Grid_Gray_Hist_Std",
-            "FrameB_Grid_Edge_Mean", "FrameB_Grid_Edge_Max", "FrameB_Grid_Edge_Min", "FrameB_Grid_Edge_Var", "FrameB_Grid_Edge_Std",
-            
-            # Pairwise features (59)
-            # Global RGB
-            "Global_RGB_Histogram_Dist_Correlation", "Global_RGB_Histogram_Dist_Intersection", "Global_RGB_Histogram_Dist_Bhattacharyya", "Global_RGB_Histogram_Dist_ChiSquare",
-            # Global Grayscale
-            "Global_Gray_Histogram_Dist_Correlation", "Global_Gray_Histogram_Dist_Intersection", "Global_Gray_Histogram_Dist_Bhattacharyya", "Global_Gray_Histogram_Dist_ChiSquare",
-            
-            # Grid RGB
-            "Grid_RGB_Histogram_Mean_Correlation", "Grid_RGB_Histogram_Max_Correlation", "Grid_RGB_Histogram_Min_Correlation", "Grid_RGB_Histogram_Var_Correlation", "Grid_RGB_Histogram_Std_Correlation",
-            "Grid_RGB_Histogram_Mean_Intersection", "Grid_RGB_Histogram_Max_Intersection", "Grid_RGB_Histogram_Min_Intersection", "Grid_RGB_Histogram_Var_Intersection", "Grid_RGB_Histogram_Std_Intersection",
-            "Grid_RGB_Histogram_Mean_Bhattacharyya", "Grid_RGB_Histogram_Max_Bhattacharyya", "Grid_RGB_Histogram_Min_Bhattacharyya", "Grid_RGB_Histogram_Var_Bhattacharyya", "Grid_RGB_Histogram_Std_Bhattacharyya",
-            "Grid_RGB_Histogram_Mean_ChiSquare", "Grid_RGB_Histogram_Max_ChiSquare", "Grid_RGB_Histogram_Min_ChiSquare", "Grid_RGB_Histogram_Var_ChiSquare", "Grid_RGB_Histogram_Std_ChiSquare",
-            
-            # Grid Gray
-            "Grid_Gray_Histogram_Mean_Correlation", "Grid_Gray_Histogram_Max_Correlation", "Grid_Gray_Histogram_Min_Correlation", "Grid_Gray_Histogram_Var_Correlation", "Grid_Gray_Histogram_Std_Correlation",
-            "Grid_Gray_Histogram_Mean_Intersection", "Grid_Gray_Histogram_Max_Intersection", "Grid_Gray_Histogram_Min_Intersection", "Grid_Gray_Histogram_Var_Intersection", "Grid_Gray_Histogram_Std_Intersection",
-            "Grid_Gray_Histogram_Mean_Bhattacharyya", "Grid_Gray_Histogram_Max_Bhattacharyya", "Grid_Gray_Histogram_Min_Bhattacharyya", "Grid_Gray_Histogram_Var_Bhattacharyya", "Grid_Gray_Histogram_Std_Bhattacharyya",
-            "Grid_Gray_Histogram_Mean_ChiSquare", "Grid_Gray_Histogram_Max_ChiSquare", "Grid_Gray_Histogram_Min_ChiSquare", "Grid_Gray_Histogram_Var_ChiSquare", "Grid_Gray_Histogram_Std_ChiSquare",
-            
-            # Non-histogram
-            "Whole_Edge_Density_Diff",
-            "Grid_Edge_Mean_Diff", "Grid_Edge_Max_Diff", "Grid_Edge_Min_Diff", "Grid_Edge_Var_Diff", "Grid_Edge_Std_Diff",
-            "SSIM_Mean", "SSIM_Min", "SSIM_Variance",
-            "Mean_Absolute_Difference", "Text_Occupancy_Diff",
-            
-            # Target Label
-            "GroundTruth"
-        ]
+        headers = CSVExporter.get_headers() + ["GroundTruth"]
         
         # Prepare metadata sidecar dict
         metadata_json = {

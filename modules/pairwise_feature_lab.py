@@ -1021,12 +1021,58 @@ class FeatureValidator:
 
 class CSVExporter:
     @staticmethod
-    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures) -> str:
+    def get_headers() -> list[str]:
+        return [
+            # Frame A features (30)
+            "FrameA_Brightness", "FrameA_Contrast", "FrameA_Entropy", "FrameA_Edge_Density", "FrameA_Text_Occupancy",
+            "FrameA_Global_RGB_Hist_Mean", "FrameA_Global_RGB_Hist_Max", "FrameA_Global_RGB_Hist_Min", "FrameA_Global_RGB_Hist_Var", "FrameA_Global_RGB_Hist_Std",
+            "FrameA_Global_Gray_Hist_Mean", "FrameA_Global_Gray_Hist_Max", "FrameA_Global_Gray_Hist_Min", "FrameA_Global_Gray_Hist_Var", "FrameA_Global_Gray_Hist_Std",
+            "FrameA_Grid_RGB_Hist_Mean", "FrameA_Grid_RGB_Hist_Max", "FrameA_Grid_RGB_Hist_Min", "FrameA_Grid_RGB_Hist_Var", "FrameA_Grid_RGB_Hist_Std",
+            "FrameA_Grid_Gray_Hist_Mean", "FrameA_Grid_Gray_Hist_Max", "FrameA_Grid_Gray_Hist_Min", "FrameA_Grid_Gray_Hist_Var", "FrameA_Grid_Gray_Hist_Std",
+            "FrameA_Grid_Edge_Mean", "FrameA_Grid_Edge_Max", "FrameA_Grid_Edge_Min", "FrameA_Grid_Edge_Var", "FrameA_Grid_Edge_Std",
+            
+            # Frame B features (30)
+            "FrameB_Brightness", "FrameB_Contrast", "FrameB_Entropy", "FrameB_Edge_Density", "FrameB_Text_Occupancy",
+            "FrameB_Global_RGB_Hist_Mean", "FrameB_Global_RGB_Hist_Max", "FrameB_Global_RGB_Hist_Min", "FrameB_Global_RGB_Hist_Var", "FrameB_Global_RGB_Hist_Std",
+            "FrameB_Global_Gray_Hist_Mean", "FrameB_Global_Gray_Hist_Max", "FrameB_Global_Gray_Hist_Min", "FrameB_Global_Gray_Hist_Var", "FrameB_Global_Gray_Hist_Std",
+            "FrameB_Grid_RGB_Hist_Mean", "FrameB_Grid_RGB_Hist_Max", "FrameB_Grid_RGB_Hist_Min", "FrameB_Grid_RGB_Hist_Var", "FrameB_Grid_RGB_Hist_Std",
+            "FrameB_Grid_Gray_Hist_Mean", "FrameB_Grid_Gray_Hist_Max", "FrameB_Grid_Gray_Hist_Min", "FrameB_Grid_Gray_Hist_Var", "FrameB_Grid_Gray_Hist_Std",
+            "FrameB_Grid_Edge_Mean", "FrameB_Grid_Edge_Max", "FrameB_Grid_Edge_Min", "FrameB_Grid_Edge_Var", "FrameB_Grid_Edge_Std",
+            
+            # Pairwise features (59)
+            # Global RGB
+            "Global_RGB_Histogram_Dist_Correlation", "Global_RGB_Histogram_Dist_Intersection", "Global_RGB_Histogram_Dist_Bhattacharyya", "Global_RGB_Histogram_Dist_ChiSquare",
+            # Global Grayscale
+            "Global_Gray_Histogram_Dist_Correlation", "Global_Gray_Histogram_Dist_Intersection", "Global_Gray_Histogram_Dist_Bhattacharyya", "Global_Gray_Histogram_Dist_ChiSquare",
+            
+            # Grid RGB
+            "Grid_RGB_Histogram_Mean_Correlation", "Grid_RGB_Histogram_Max_Correlation", "Grid_RGB_Histogram_Min_Correlation", "Grid_RGB_Histogram_Var_Correlation", "Grid_RGB_Histogram_Std_Correlation",
+            "Grid_RGB_Histogram_Mean_Intersection", "Grid_RGB_Histogram_Max_Intersection", "Grid_RGB_Histogram_Min_Intersection", "Grid_RGB_Histogram_Var_Intersection", "Grid_RGB_Histogram_Std_Intersection",
+            "Grid_RGB_Histogram_Mean_Bhattacharyya", "Grid_RGB_Histogram_Max_Bhattacharyya", "Grid_RGB_Histogram_Min_Bhattacharyya", "Grid_RGB_Histogram_Var_Bhattacharyya", "Grid_RGB_Histogram_Std_Bhattacharyya",
+            "Grid_RGB_Histogram_Mean_ChiSquare", "Grid_RGB_Histogram_Max_ChiSquare", "Grid_RGB_Histogram_Min_ChiSquare", "Grid_RGB_Histogram_Var_ChiSquare", "Grid_RGB_Histogram_Std_ChiSquare",
+            
+            # Grid Gray
+            "Grid_Gray_Histogram_Mean_Correlation", "Grid_Gray_Histogram_Max_Correlation", "Grid_Gray_Histogram_Min_Correlation", "Grid_Gray_Histogram_Var_Correlation", "Grid_Gray_Histogram_Std_Correlation",
+            "Grid_Gray_Histogram_Mean_Intersection", "Grid_Gray_Histogram_Max_Intersection", "Grid_Gray_Histogram_Min_Intersection", "Grid_Gray_Histogram_Var_Intersection", "Grid_Gray_Histogram_Std_Intersection",
+            "Grid_Gray_Histogram_Mean_Bhattacharyya", "Grid_Gray_Histogram_Max_Bhattacharyya", "Grid_Gray_Histogram_Min_Bhattacharyya", "Grid_Gray_Histogram_Var_Bhattacharyya", "Grid_Gray_Histogram_Std_Bhattacharyya",
+            "Grid_Gray_Histogram_Mean_ChiSquare", "Grid_Gray_Histogram_Max_ChiSquare", "Grid_Gray_Histogram_Min_ChiSquare", "Grid_Gray_Histogram_Var_ChiSquare", "Grid_Gray_Histogram_Std_ChiSquare",
+            
+            # Non-histogram
+            "Whole_Edge_Density_Diff",
+            "Grid_Edge_Mean_Diff", "Grid_Edge_Max_Diff", "Grid_Edge_Min_Diff", "Grid_Edge_Var_Diff", "Grid_Edge_Std_Diff",
+            "SSIM_Mean", "SSIM_Min", "SSIM_Variance",
+            "Mean_Absolute_Difference", "Text_Occupancy_Diff"
+        ]
+
+    @staticmethod
+    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, include_header: bool = True) -> str:
         # Create CSV layout: FrameA + FrameB + Pairwise Differences
         all_values = fa.to_list() + fb.to_list() + pf.to_list()
-        
-        # Serialize list as a single comma-separated row
-        return ",".join(str(val) for val in all_values)
+        val_str = ",".join(str(val) for val in all_values)
+        if include_header:
+            hdr_str = ",".join(CSVExporter.get_headers())
+            return f"{hdr_str}\n{val_str}"
+        return val_str
 
 # ==========================================
 # 8. Decoupled Visualizers
@@ -1289,13 +1335,13 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    st.markdown("#### 💾 CSV Export Preview (119 Features, Headerless)")
-    final_csv_row = CSVExporter.export(fa, fb, pf)
+    st.markdown("#### 💾 CSV Export Preview (119 Features, Headed)")
+    final_csv_row = CSVExporter.export(fa, fb, pf, include_header=True)
     
     st.code(final_csv_row, language="text")
     
     st.download_button(
-        label="💾 Download Pairwise Vector CSV (119 Features, Headerless)",
+        label="💾 Download Pairwise Vector CSV (119 Features, Headed)",
         data=final_csv_row,
         file_name="pairwise_vector.csv",
         mime="text/csv",

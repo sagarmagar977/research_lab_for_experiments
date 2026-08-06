@@ -58,7 +58,7 @@ class TestExportersAndHistograms(unittest.TestCase):
                 
         pf = PairwiseFeatures(**pf_kwargs)
         
-        csv_row_default = CSVExporter.export(fa, fb, pf)
+        csv_row_default = CSVExporter.export(fa, fb, pf, include_header=False)
         parts_default = csv_row_default.split(",")
         
         # Clean 119 features row
