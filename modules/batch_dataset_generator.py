@@ -77,12 +77,13 @@ def render_batch_dataset_generator():
         text_thresh=st.session_state["text_thresh"],
         text_kernel=st.session_state["text_kernel"],
         text_iterations=st.session_state["text_iterations"],
-        text_min_area=st.session_state["text_min_area"]
+        text_min_area=st.session_state["text_min_area"],
+        hist_epsilon=st.session_state.get("hist_epsilon", 1e-10)
     )
     
     col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
     with col_cfg1:
-        st.write(f"**Histogram:** Bins={config.hist_bins}, Metric={config.hist_method}, Grid={config.hist_grid_size}x{config.hist_grid_size}")
+        st.write(f"**Histogram:** Bins={config.hist_bins}, Metric={config.hist_method}, Grid={config.hist_grid_size}x{config.hist_grid_size}, Epsilon={config.hist_epsilon:.1e}")
     with col_cfg2:
         st.write(f"**Edges:** Blur={config.edge_blur}, Canny={config.canny_low}/{config.canny_high}, Grid={config.edge_grid_size}x{config.edge_grid_size}")
     with col_cfg3:
@@ -104,7 +105,7 @@ def render_batch_dataset_generator():
         
         csv_rows = []
         
-        # Define exact headers matching our 97-column output (with GroundTruth integrated as target label)
+        # Define exact headers matching our expanded output (with GroundTruth integrated as target label)
         headers = [
             "Frame_A", "Frame_B", "Feature_Engine_Version", "Feature_Schema_Version", "Experiment_Version", "Timestamp", 
             "Image_Width", "Image_Height", "Grid_Size", "Histogram_Bins", "Histogram_Comparison_Metric", "Color_Mode", "SSIM_Window_Size", "Hyperparameters_JSON",
@@ -127,9 +128,24 @@ def render_batch_dataset_generator():
             "FrameB_Grid_Edge_Mean", "FrameB_Grid_Edge_Max", "FrameB_Grid_Edge_Min", "FrameB_Grid_Edge_Var", "FrameB_Grid_Edge_Std",
             
             # Pairwise features
-            "Global_RGB_Histogram_Dist", "Global_Gray_Histogram_Dist",
-            "Grid_RGB_Histogram_Mean", "Grid_RGB_Histogram_Max", "Grid_RGB_Histogram_Min", "Grid_RGB_Histogram_Var", "Grid_RGB_Histogram_Std",
-            "Grid_Gray_Histogram_Mean", "Grid_Gray_Histogram_Max", "Grid_Gray_Histogram_Min", "Grid_Gray_Histogram_Var", "Grid_Gray_Histogram_Std",
+            # Global RGB
+            "Global_RGB_Histogram_Dist_Correlation", "Global_RGB_Histogram_Dist_Intersection", "Global_RGB_Histogram_Dist_Bhattacharyya", "Global_RGB_Histogram_Dist_ChiSquare",
+            # Global Grayscale
+            "Global_Gray_Histogram_Dist_Correlation", "Global_Gray_Histogram_Dist_Intersection", "Global_Gray_Histogram_Dist_Bhattacharyya", "Global_Gray_Histogram_Dist_ChiSquare",
+            
+            # Grid RGB
+            "Grid_RGB_Histogram_Mean_Correlation", "Grid_RGB_Histogram_Max_Correlation", "Grid_RGB_Histogram_Min_Correlation", "Grid_RGB_Histogram_Var_Correlation", "Grid_RGB_Histogram_Std_Correlation",
+            "Grid_RGB_Histogram_Mean_Intersection", "Grid_RGB_Histogram_Max_Intersection", "Grid_RGB_Histogram_Min_Intersection", "Grid_RGB_Histogram_Var_Intersection", "Grid_RGB_Histogram_Std_Intersection",
+            "Grid_RGB_Histogram_Mean_Bhattacharyya", "Grid_RGB_Histogram_Max_Bhattacharyya", "Grid_RGB_Histogram_Min_Bhattacharyya", "Grid_RGB_Histogram_Var_Bhattacharyya", "Grid_RGB_Histogram_Std_Bhattacharyya",
+            "Grid_RGB_Histogram_Mean_ChiSquare", "Grid_RGB_Histogram_Max_ChiSquare", "Grid_RGB_Histogram_Min_ChiSquare", "Grid_RGB_Histogram_Var_ChiSquare", "Grid_RGB_Histogram_Std_ChiSquare",
+            
+            # Grid Gray
+            "Grid_Gray_Histogram_Mean_Correlation", "Grid_Gray_Histogram_Max_Correlation", "Grid_Gray_Histogram_Min_Correlation", "Grid_Gray_Histogram_Var_Correlation", "Grid_Gray_Histogram_Std_Correlation",
+            "Grid_Gray_Histogram_Mean_Intersection", "Grid_Gray_Histogram_Max_Intersection", "Grid_Gray_Histogram_Min_Intersection", "Grid_Gray_Histogram_Var_Intersection", "Grid_Gray_Histogram_Std_Intersection",
+            "Grid_Gray_Histogram_Mean_Bhattacharyya", "Grid_Gray_Histogram_Max_Bhattacharyya", "Grid_Gray_Histogram_Min_Bhattacharyya", "Grid_Gray_Histogram_Var_Bhattacharyya", "Grid_Gray_Histogram_Std_Bhattacharyya",
+            "Grid_Gray_Histogram_Mean_ChiSquare", "Grid_Gray_Histogram_Max_ChiSquare", "Grid_Gray_Histogram_Min_ChiSquare", "Grid_Gray_Histogram_Var_ChiSquare", "Grid_Gray_Histogram_Std_ChiSquare",
+            
+            # Non-histogram
             "Whole_Edge_Density_Diff",
             "Grid_Edge_Mean_Diff", "Grid_Edge_Max_Diff", "Grid_Edge_Min_Diff", "Grid_Edge_Var_Diff", "Grid_Edge_Std_Diff",
             "SSIM_Mean", "SSIM_Min", "SSIM_Variance",

@@ -20,14 +20,15 @@ class TestHistogramExtractor(unittest.TestCase):
             text_thresh=127,
             text_kernel=5,
             text_iterations=1,
-            text_min_area=10
+            text_min_area=10,
+            hist_epsilon=1e-10
         )
         extractor = HistogramExtractor()
         cache = {}
         logs = []
         result = extractor.extract(img_a, img_b, config, cache, logs)
-        self.assertIn("rgb_hist_dist_global", result.pairwise_metrics)
-        self.assertAlmostEqual(result.pairwise_metrics["rgb_hist_dist_global"], 1.0, places=4)
+        self.assertIn("rgb_hist_dist_global_correlation", result.pairwise_metrics)
+        self.assertAlmostEqual(result.pairwise_metrics["rgb_hist_dist_global_correlation"], 1.0, places=4)
 
 if __name__ == "__main__":
     unittest.main()

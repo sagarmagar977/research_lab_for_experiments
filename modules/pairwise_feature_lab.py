@@ -32,6 +32,7 @@ class PairwiseFeatureConfig:
     text_kernel: int
     text_iterations: int
     text_min_area: int
+    hist_epsilon: float = 1e-10
 
 @dataclass
 class FrameFeatures:
@@ -87,18 +88,75 @@ class FrameFeatures:
 
 @dataclass
 class PairwiseFeatures:
-    rgb_hist_dist_global: float
-    gray_hist_dist_global: float
-    rgb_hist_grid_mean: float
-    rgb_hist_grid_max: float
-    rgb_hist_grid_min: float
-    rgb_hist_grid_var: float
-    rgb_hist_grid_std: float
-    gray_hist_grid_mean: float
-    gray_hist_grid_max: float
-    gray_hist_grid_min: float
-    gray_hist_grid_var: float
-    gray_hist_grid_std: float
+    # Global RGB
+    rgb_hist_dist_global_correlation: float
+    rgb_hist_dist_global_intersection: float
+    rgb_hist_dist_global_bhattacharyya: float
+    rgb_hist_dist_global_chisquare: float
+
+    # Global Grayscale
+    gray_hist_dist_global_correlation: float
+    gray_hist_dist_global_intersection: float
+    gray_hist_dist_global_bhattacharyya: float
+    gray_hist_dist_global_chisquare: float
+
+    # Grid RGB - Correlation
+    rgb_hist_grid_mean_correlation: float
+    rgb_hist_grid_max_correlation: float
+    rgb_hist_grid_min_correlation: float
+    rgb_hist_grid_var_correlation: float
+    rgb_hist_grid_std_correlation: float
+
+    # Grid RGB - Intersection
+    rgb_hist_grid_mean_intersection: float
+    rgb_hist_grid_max_intersection: float
+    rgb_hist_grid_min_intersection: float
+    rgb_hist_grid_var_intersection: float
+    rgb_hist_grid_std_intersection: float
+
+    # Grid RGB - Bhattacharyya
+    rgb_hist_grid_mean_bhattacharyya: float
+    rgb_hist_grid_max_bhattacharyya: float
+    rgb_hist_grid_min_bhattacharyya: float
+    rgb_hist_grid_var_bhattacharyya: float
+    rgb_hist_grid_std_bhattacharyya: float
+
+    # Grid RGB - ChiSquare
+    rgb_hist_grid_mean_chisquare: float
+    rgb_hist_grid_max_chisquare: float
+    rgb_hist_grid_min_chisquare: float
+    rgb_hist_grid_var_chisquare: float
+    rgb_hist_grid_std_chisquare: float
+
+    # Grid Grayscale - Correlation
+    gray_hist_grid_mean_correlation: float
+    gray_hist_grid_max_correlation: float
+    gray_hist_grid_min_correlation: float
+    gray_hist_grid_var_correlation: float
+    gray_hist_grid_std_correlation: float
+
+    # Grid Grayscale - Intersection
+    gray_hist_grid_mean_intersection: float
+    gray_hist_grid_max_intersection: float
+    gray_hist_grid_min_intersection: float
+    gray_hist_grid_var_intersection: float
+    gray_hist_grid_std_intersection: float
+
+    # Grid Grayscale - Bhattacharyya
+    gray_hist_grid_mean_bhattacharyya: float
+    gray_hist_grid_max_bhattacharyya: float
+    gray_hist_grid_min_bhattacharyya: float
+    gray_hist_grid_var_bhattacharyya: float
+    gray_hist_grid_std_bhattacharyya: float
+
+    # Grid Grayscale - ChiSquare
+    gray_hist_grid_mean_chisquare: float
+    gray_hist_grid_max_chisquare: float
+    gray_hist_grid_min_chisquare: float
+    gray_hist_grid_var_chisquare: float
+    gray_hist_grid_std_chisquare: float
+
+    # Non-histogram features
     whole_edge_density_diff: float
     grid_edge_mean_diff: float
     grid_edge_max_diff: float
@@ -116,18 +174,75 @@ class PairwiseFeatures:
 
     def to_list(self) -> list:
         return [
-            self.rgb_hist_dist_global,
-            self.gray_hist_dist_global,
-            self.rgb_hist_grid_mean,
-            self.rgb_hist_grid_max,
-            self.rgb_hist_grid_min,
-            self.rgb_hist_grid_var,
-            self.rgb_hist_grid_std,
-            self.gray_hist_grid_mean,
-            self.gray_hist_grid_max,
-            self.gray_hist_grid_min,
-            self.gray_hist_grid_var,
-            self.gray_hist_grid_std,
+            # Global RGB
+            self.rgb_hist_dist_global_correlation,
+            self.rgb_hist_dist_global_intersection,
+            self.rgb_hist_dist_global_bhattacharyya,
+            self.rgb_hist_dist_global_chisquare,
+
+            # Global Grayscale
+            self.gray_hist_dist_global_correlation,
+            self.gray_hist_dist_global_intersection,
+            self.gray_hist_dist_global_bhattacharyya,
+            self.gray_hist_dist_global_chisquare,
+
+            # Grid RGB - Correlation
+            self.rgb_hist_grid_mean_correlation,
+            self.rgb_hist_grid_max_correlation,
+            self.rgb_hist_grid_min_correlation,
+            self.rgb_hist_grid_var_correlation,
+            self.rgb_hist_grid_std_correlation,
+
+            # Grid RGB - Intersection
+            self.rgb_hist_grid_mean_intersection,
+            self.rgb_hist_grid_max_intersection,
+            self.rgb_hist_grid_min_intersection,
+            self.rgb_hist_grid_var_intersection,
+            self.rgb_hist_grid_std_intersection,
+
+            # Grid RGB - Bhattacharyya
+            self.rgb_hist_grid_mean_bhattacharyya,
+            self.rgb_hist_grid_max_bhattacharyya,
+            self.rgb_hist_grid_min_bhattacharyya,
+            self.rgb_hist_grid_var_bhattacharyya,
+            self.rgb_hist_grid_std_bhattacharyya,
+
+            # Grid RGB - ChiSquare
+            self.rgb_hist_grid_mean_chisquare,
+            self.rgb_hist_grid_max_chisquare,
+            self.rgb_hist_grid_min_chisquare,
+            self.rgb_hist_grid_var_chisquare,
+            self.rgb_hist_grid_std_chisquare,
+
+            # Grid Grayscale - Correlation
+            self.gray_hist_grid_mean_correlation,
+            self.gray_hist_grid_max_correlation,
+            self.gray_hist_grid_min_correlation,
+            self.gray_hist_grid_var_correlation,
+            self.gray_hist_grid_std_correlation,
+
+            # Grid Grayscale - Intersection
+            self.gray_hist_grid_mean_intersection,
+            self.gray_hist_grid_max_intersection,
+            self.gray_hist_grid_min_intersection,
+            self.gray_hist_grid_var_intersection,
+            self.gray_hist_grid_std_intersection,
+
+            # Grid Grayscale - Bhattacharyya
+            self.gray_hist_grid_mean_bhattacharyya,
+            self.gray_hist_grid_max_bhattacharyya,
+            self.gray_hist_grid_min_bhattacharyya,
+            self.gray_hist_grid_var_bhattacharyya,
+            self.gray_hist_grid_std_bhattacharyya,
+
+            # Grid Grayscale - ChiSquare
+            self.gray_hist_grid_mean_chisquare,
+            self.gray_hist_grid_max_chisquare,
+            self.gray_hist_grid_min_chisquare,
+            self.gray_hist_grid_var_chisquare,
+            self.gray_hist_grid_std_chisquare,
+
+            # Non-histogram
             self.whole_edge_density_diff,
             self.grid_edge_mean_diff,
             self.grid_edge_max_diff,
@@ -187,29 +302,36 @@ class HistogramExtractor(BaseExtractor):
                 cells.append((ymin, ymax, xmin, xmax))
         return cells
 
-    def calc_norm_hist(self, img, bins, color_mode):
+    def calc_norm_hist(self, img, bins, color_mode, epsilon):
         if color_mode == "Grayscale":
             gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             hist = cv2.calcHist([gray], [0], None, [bins], [0, 256])
-            cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-            return hist
         else:
             hists = []
             for ch in range(3):
-                hist = cv2.calcHist([img], [ch], None, [bins], [0, 256])
-                cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-                hists.append(hist)
-            return np.concatenate(hists, axis=0)
+                hists.append(cv2.calcHist([img], [ch], None, [bins], [0, 256]))
+            hist = np.concatenate(hists, axis=0)
+            
+        hist = hist.astype(np.float32).flatten()
+        hist += epsilon
+        hist /= np.sum(hist)
+        return hist
 
-    def compare_hist(self, hist1, hist2, method_str):
-        m_map = {
-            "Correlation": cv2.HISTCMP_CORREL,
-            "Chi-Square": cv2.HISTCMP_CHISQR,
-            "Intersection": cv2.HISTCMP_INTERSECT,
-            "Bhattacharyya": cv2.HISTCMP_BHATTACHARYYA
+    def verify_histogram_validity(self, h1: np.ndarray, h2: np.ndarray):
+        assert h1.dtype == np.float32 and h2.dtype == np.float32, "Histograms must be float32 for comparison"
+        assert h1.ndim == 1 and h2.ndim == 1, "Histograms must be 1D"
+        assert np.isfinite(h1).all() and np.isfinite(h2).all(), "Histograms must contain only finite values"
+        assert (h1 >= 0.0).all() and (h2 >= 0.0).all(), "Histogram bins cannot be negative"
+        assert abs(np.sum(h1) - 1.0) < 1e-5 and abs(np.sum(h2) - 1.0) < 1e-5, "Histograms must sum to 1.0 (L1 normalized)"
+
+    def compare_hist_all(self, h1, h2):
+        self.verify_histogram_validity(h1, h2)
+        return {
+            "correlation": float(cv2.compareHist(h1, h2, cv2.HISTCMP_CORREL)),
+            "intersection": float(cv2.compareHist(h1, h2, cv2.HISTCMP_INTERSECT)),
+            "bhattacharyya": float(cv2.compareHist(h1, h2, cv2.HISTCMP_BHATTACHARYYA)),
+            "chisquare": float(cv2.compareHist(h1, h2, cv2.HISTCMP_CHISQR))
         }
-        mid = m_map.get(method_str, cv2.HISTCMP_CORREL)
-        return float(cv2.compareHist(hist1, hist2, mid))
 
     def extract(self, img_a: np.ndarray, img_b: np.ndarray, config: PairwiseFeatureConfig, cache: dict, logs: list) -> ExtractorResult:
         t0 = time.perf_counter()
@@ -246,19 +368,19 @@ class HistogramExtractor(BaseExtractor):
         fm_b = get_frame_metrics(img_b, gray_b, hash_b)
         
         # Global Histograms Cache logic
-        hist_rgb_key_a = ("hist_rgb", hash_a, config.hist_bins)
-        hist_rgb_key_b = ("hist_rgb", hash_b, config.hist_bins)
-        hist_gray_key_a = ("hist_gray", hash_a, config.hist_bins)
-        hist_gray_key_b = ("hist_gray", hash_b, config.hist_bins)
+        hist_rgb_key_a = ("hist_rgb", hash_a, config.hist_bins, config.hist_epsilon)
+        hist_rgb_key_b = ("hist_rgb", hash_b, config.hist_bins, config.hist_epsilon)
+        hist_gray_key_a = ("hist_gray", hash_a, config.hist_bins, config.hist_epsilon)
+        hist_gray_key_b = ("hist_gray", hash_b, config.hist_bins, config.hist_epsilon)
         
         if hist_rgb_key_a not in cache:
-            cache[hist_rgb_key_a] = self.calc_norm_hist(img_a, config.hist_bins, "RGB")
+            cache[hist_rgb_key_a] = self.calc_norm_hist(img_a, config.hist_bins, "RGB", config.hist_epsilon)
         if hist_rgb_key_b not in cache:
-            cache[hist_rgb_key_b] = self.calc_norm_hist(img_b, config.hist_bins, "RGB")
+            cache[hist_rgb_key_b] = self.calc_norm_hist(img_b, config.hist_bins, "RGB", config.hist_epsilon)
         if hist_gray_key_a not in cache:
-            cache[hist_gray_key_a] = self.calc_norm_hist(img_a, config.hist_bins, "Grayscale")
+            cache[hist_gray_key_a] = self.calc_norm_hist(img_a, config.hist_bins, "Grayscale", config.hist_epsilon)
         if hist_gray_key_b not in cache:
-            cache[hist_gray_key_b] = self.calc_norm_hist(img_b, config.hist_bins, "Grayscale")
+            cache[hist_gray_key_b] = self.calc_norm_hist(img_b, config.hist_bins, "Grayscale", config.hist_epsilon)
             
         rgb_hist_a = cache[hist_rgb_key_a]
         rgb_hist_b = cache[hist_rgb_key_b]
@@ -291,15 +413,15 @@ class HistogramExtractor(BaseExtractor):
         fm_b["global_gray_hist_var"] = float(np.var(gray_hist_b))
         fm_b["global_gray_hist_std"] = float(np.std(gray_hist_b))
         
-        rgb_global_dist = self.compare_hist(rgb_hist_a, rgb_hist_b, config.hist_method)
-        gray_global_dist = self.compare_hist(gray_hist_a, gray_hist_b, config.hist_method)
+        rgb_global_comps = self.compare_hist_all(rgb_hist_a, rgb_hist_b)
+        gray_global_comps = self.compare_hist_all(gray_hist_a, gray_hist_b)
         
         # Grid-based histograms
         cells_a = self.get_grid_cells(img_a.shape, config.hist_grid_size)
         cells_b = self.get_grid_cells(img_b.shape, config.hist_grid_size)
         
-        rgb_grid_scores = []
-        gray_grid_scores = []
+        grid_rgb_comps = {"correlation": [], "intersection": [], "bhattacharyya": [], "chisquare": []}
+        grid_gray_comps = {"correlation": [], "intersection": [], "bhattacharyya": [], "chisquare": []}
         
         grid_rgb_means_a, grid_rgb_maxes_a, grid_rgb_mins_a, grid_rgb_vars_a, grid_rgb_stds_a = [], [], [], [], []
         grid_gray_means_a, grid_gray_maxes_a, grid_gray_mins_a, grid_gray_vars_a, grid_gray_stds_a = [], [], [], [], []
@@ -311,10 +433,10 @@ class HistogramExtractor(BaseExtractor):
             cell_a = img_a[ya1:ya2, xa1:xa2]
             cell_b = img_b[yb1:yb2, xb1:xb2]
             
-            c_rgb_a = self.calc_norm_hist(cell_a, config.hist_bins, "RGB")
-            c_rgb_b = self.calc_norm_hist(cell_b, config.hist_bins, "RGB")
-            c_gray_a = self.calc_norm_hist(cell_a, config.hist_bins, "Grayscale")
-            c_gray_b = self.calc_norm_hist(cell_b, config.hist_bins, "Grayscale")
+            c_rgb_a = self.calc_norm_hist(cell_a, config.hist_bins, "RGB", config.hist_epsilon)
+            c_rgb_b = self.calc_norm_hist(cell_b, config.hist_bins, "RGB", config.hist_epsilon)
+            c_gray_a = self.calc_norm_hist(cell_a, config.hist_bins, "Grayscale", config.hist_epsilon)
+            c_gray_b = self.calc_norm_hist(cell_b, config.hist_bins, "Grayscale", config.hist_epsilon)
             
             # Statistics of individual cells for A
             grid_rgb_means_a.append(np.mean(c_rgb_a))
@@ -342,12 +464,13 @@ class HistogramExtractor(BaseExtractor):
             grid_gray_vars_b.append(np.var(c_gray_b))
             grid_gray_stds_b.append(np.std(c_gray_b))
             
-            rgb_grid_scores.append(self.compare_hist(c_rgb_a, c_rgb_b, config.hist_method))
-            gray_grid_scores.append(self.compare_hist(c_gray_a, c_gray_b, config.hist_method))
+            rgb_comps = self.compare_hist_all(c_rgb_a, c_rgb_b)
+            gray_comps = self.compare_hist_all(c_gray_a, c_gray_b)
             
-        rgb_grid_scores = np.array(rgb_grid_scores)
-        gray_grid_scores = np.array(gray_grid_scores)
-        
+            for m in ["correlation", "intersection", "bhattacharyya", "chisquare"]:
+                grid_rgb_comps[m].append(rgb_comps[m])
+                grid_gray_comps[m].append(gray_comps[m])
+            
         # Merge grid cell stats for A
         fm_a["grid_rgb_hist_mean"] = float(np.mean(grid_rgb_means_a))
         fm_a["grid_rgb_hist_max"] = float(np.mean(grid_rgb_maxes_a))
@@ -375,21 +498,33 @@ class HistogramExtractor(BaseExtractor):
         fm_b["grid_gray_hist_std"] = float(np.mean(grid_gray_stds_b))
         
         pairwise_res = {
-            "rgb_hist_dist_global": rgb_global_dist,
-            "gray_hist_dist_global": gray_global_dist,
-            
-            "rgb_hist_grid_mean": float(np.mean(rgb_grid_scores)),
-            "rgb_hist_grid_max": float(np.max(rgb_grid_scores)),
-            "rgb_hist_grid_min": float(np.min(rgb_grid_scores)),
-            "rgb_hist_grid_var": float(np.var(rgb_grid_scores)),
-            "rgb_hist_grid_std": float(np.std(rgb_grid_scores)),
-            
-            "gray_hist_grid_mean": float(np.mean(gray_grid_scores)),
-            "gray_hist_grid_max": float(np.max(gray_grid_scores)),
-            "gray_hist_grid_min": float(np.min(gray_grid_scores)),
-            "gray_hist_grid_var": float(np.var(gray_grid_scores)),
-            "gray_hist_grid_std": float(np.std(gray_grid_scores))
+            "rgb_hist_dist_global_correlation": rgb_global_comps["correlation"],
+            "rgb_hist_dist_global_intersection": rgb_global_comps["intersection"],
+            "rgb_hist_dist_global_bhattacharyya": rgb_global_comps["bhattacharyya"],
+            "rgb_hist_dist_global_chisquare": rgb_global_comps["chisquare"],
+
+            "gray_hist_dist_global_correlation": gray_global_comps["correlation"],
+            "gray_hist_dist_global_intersection": gray_global_comps["intersection"],
+            "gray_hist_dist_global_bhattacharyya": gray_global_comps["bhattacharyya"],
+            "gray_hist_dist_global_chisquare": gray_global_comps["chisquare"]
         }
+        
+        # Build grid statistics for each metric
+        for m in ["correlation", "intersection", "bhattacharyya", "chisquare"]:
+            rgb_arr = np.array(grid_rgb_comps[m])
+            gray_arr = np.array(grid_gray_comps[m])
+            
+            pairwise_res[f"rgb_hist_grid_mean_{m}"] = float(np.mean(rgb_arr))
+            pairwise_res[f"rgb_hist_grid_max_{m}"] = float(np.max(rgb_arr))
+            pairwise_res[f"rgb_hist_grid_min_{m}"] = float(np.min(rgb_arr))
+            pairwise_res[f"rgb_hist_grid_var_{m}"] = float(np.var(rgb_arr))
+            pairwise_res[f"rgb_hist_grid_std_{m}"] = float(np.std(rgb_arr))
+            
+            pairwise_res[f"gray_hist_grid_mean_{m}"] = float(np.mean(gray_arr))
+            pairwise_res[f"gray_hist_grid_max_{m}"] = float(np.max(gray_arr))
+            pairwise_res[f"gray_hist_grid_min_{m}"] = float(np.min(gray_arr))
+            pairwise_res[f"gray_hist_grid_var_{m}"] = float(np.var(gray_arr))
+            pairwise_res[f"gray_hist_grid_std_{m}"] = float(np.std(gray_arr))
         
         elapsed = (time.perf_counter() - t0) * 1000
         logs.append(f"[Histogram] Features computed in {elapsed:.1f} ms")
@@ -398,7 +533,7 @@ class HistogramExtractor(BaseExtractor):
             frame_a_metrics=fm_a,
             frame_b_metrics=fm_b,
             pairwise_metrics=pairwise_res,
-            visuals={"hist_grid_scores": rgb_grid_scores.tolist()}
+            visuals={"hist_grid_scores": grid_rgb_comps["correlation"]} # fallback visual
         )
 
 class EdgeExtractor(BaseExtractor):
@@ -759,33 +894,84 @@ class PairwiseFeatureExtractor:
         
         # Compile Pairwise typed models
         pf = PairwiseFeatures(
-            rgb_hist_dist_global=pairwise_dict.get("rgb_hist_dist_global", 0.0),
-            gray_hist_dist_global=pairwise_dict.get("gray_hist_dist_global", 0.0),
-            
-            rgb_hist_grid_mean=pairwise_dict.get("rgb_hist_grid_mean", 0.0),
-            rgb_hist_grid_max=pairwise_dict.get("rgb_hist_grid_max", 0.0),
-            rgb_hist_grid_min=pairwise_dict.get("rgb_hist_grid_min", 0.0),
-            rgb_hist_grid_var=pairwise_dict.get("rgb_hist_grid_var", 0.0),
-            rgb_hist_grid_std=pairwise_dict.get("rgb_hist_grid_std", 0.0),
-            
-            gray_hist_grid_mean=pairwise_dict.get("gray_hist_grid_mean", 0.0),
-            gray_hist_grid_max=pairwise_dict.get("gray_hist_grid_max", 0.0),
-            gray_hist_grid_min=pairwise_dict.get("gray_hist_grid_min", 0.0),
-            gray_hist_grid_var=pairwise_dict.get("gray_hist_grid_var", 0.0),
-            gray_hist_grid_std=pairwise_dict.get("gray_hist_grid_std", 0.0),
-            
+            # Global RGB
+            rgb_hist_dist_global_correlation=pairwise_dict.get("rgb_hist_dist_global_correlation", 0.0),
+            rgb_hist_dist_global_intersection=pairwise_dict.get("rgb_hist_dist_global_intersection", 0.0),
+            rgb_hist_dist_global_bhattacharyya=pairwise_dict.get("rgb_hist_dist_global_bhattacharyya", 0.0),
+            rgb_hist_dist_global_chisquare=pairwise_dict.get("rgb_hist_dist_global_chisquare", 0.0),
+
+            # Global Grayscale
+            gray_hist_dist_global_correlation=pairwise_dict.get("gray_hist_dist_global_correlation", 0.0),
+            gray_hist_dist_global_intersection=pairwise_dict.get("gray_hist_dist_global_intersection", 0.0),
+            gray_hist_dist_global_bhattacharyya=pairwise_dict.get("gray_hist_dist_global_bhattacharyya", 0.0),
+            gray_hist_dist_global_chisquare=pairwise_dict.get("gray_hist_dist_global_chisquare", 0.0),
+
+            # Grid RGB - Correlation
+            rgb_hist_grid_mean_correlation=pairwise_dict.get("rgb_hist_grid_mean_correlation", 0.0),
+            rgb_hist_grid_max_correlation=pairwise_dict.get("rgb_hist_grid_max_correlation", 0.0),
+            rgb_hist_grid_min_correlation=pairwise_dict.get("rgb_hist_grid_min_correlation", 0.0),
+            rgb_hist_grid_var_correlation=pairwise_dict.get("rgb_hist_grid_var_correlation", 0.0),
+            rgb_hist_grid_std_correlation=pairwise_dict.get("rgb_hist_grid_std_correlation", 0.0),
+
+            # Grid RGB - Intersection
+            rgb_hist_grid_mean_intersection=pairwise_dict.get("rgb_hist_grid_mean_intersection", 0.0),
+            rgb_hist_grid_max_intersection=pairwise_dict.get("rgb_hist_grid_max_intersection", 0.0),
+            rgb_hist_grid_min_intersection=pairwise_dict.get("rgb_hist_grid_min_intersection", 0.0),
+            rgb_hist_grid_var_intersection=pairwise_dict.get("rgb_hist_grid_var_intersection", 0.0),
+            rgb_hist_grid_std_intersection=pairwise_dict.get("rgb_hist_grid_std_intersection", 0.0),
+
+            # Grid RGB - Bhattacharyya
+            rgb_hist_grid_mean_bhattacharyya=pairwise_dict.get("rgb_hist_grid_mean_bhattacharyya", 0.0),
+            rgb_hist_grid_max_bhattacharyya=pairwise_dict.get("rgb_hist_grid_max_bhattacharyya", 0.0),
+            rgb_hist_grid_min_bhattacharyya=pairwise_dict.get("rgb_hist_grid_min_bhattacharyya", 0.0),
+            rgb_hist_grid_var_bhattacharyya=pairwise_dict.get("rgb_hist_grid_var_bhattacharyya", 0.0),
+            rgb_hist_grid_std_bhattacharyya=pairwise_dict.get("rgb_hist_grid_std_bhattacharyya", 0.0),
+
+            # Grid RGB - ChiSquare
+            rgb_hist_grid_mean_chisquare=pairwise_dict.get("rgb_hist_grid_mean_chisquare", 0.0),
+            rgb_hist_grid_max_chisquare=pairwise_dict.get("rgb_hist_grid_max_chisquare", 0.0),
+            rgb_hist_grid_min_chisquare=pairwise_dict.get("rgb_hist_grid_min_chisquare", 0.0),
+            rgb_hist_grid_var_chisquare=pairwise_dict.get("rgb_hist_grid_var_chisquare", 0.0),
+            rgb_hist_grid_std_chisquare=pairwise_dict.get("rgb_hist_grid_std_chisquare", 0.0),
+
+            # Grid Grayscale - Correlation
+            gray_hist_grid_mean_correlation=pairwise_dict.get("gray_hist_grid_mean_correlation", 0.0),
+            gray_hist_grid_max_correlation=pairwise_dict.get("gray_hist_grid_max_correlation", 0.0),
+            gray_hist_grid_min_correlation=pairwise_dict.get("gray_hist_grid_min_correlation", 0.0),
+            gray_hist_grid_var_correlation=pairwise_dict.get("gray_hist_grid_var_correlation", 0.0),
+            gray_hist_grid_std_correlation=pairwise_dict.get("gray_hist_grid_std_correlation", 0.0),
+
+            # Grid Grayscale - Intersection
+            gray_hist_grid_mean_intersection=pairwise_dict.get("gray_hist_grid_mean_intersection", 0.0),
+            gray_hist_grid_max_intersection=pairwise_dict.get("gray_hist_grid_max_intersection", 0.0),
+            gray_hist_grid_min_intersection=pairwise_dict.get("gray_hist_grid_min_intersection", 0.0),
+            gray_hist_grid_var_intersection=pairwise_dict.get("gray_hist_grid_var_intersection", 0.0),
+            gray_hist_grid_std_intersection=pairwise_dict.get("gray_hist_grid_std_intersection", 0.0),
+
+            # Grid Grayscale - Bhattacharyya
+            gray_hist_grid_mean_bhattacharyya=pairwise_dict.get("gray_hist_grid_mean_bhattacharyya", 0.0),
+            gray_hist_grid_max_bhattacharyya=pairwise_dict.get("gray_hist_grid_max_bhattacharyya", 0.0),
+            gray_hist_grid_min_bhattacharyya=pairwise_dict.get("gray_hist_grid_min_bhattacharyya", 0.0),
+            gray_hist_grid_var_bhattacharyya=pairwise_dict.get("gray_hist_grid_var_bhattacharyya", 0.0),
+            gray_hist_grid_std_bhattacharyya=pairwise_dict.get("gray_hist_grid_std_bhattacharyya", 0.0),
+
+            # Grid Grayscale - ChiSquare
+            gray_hist_grid_mean_chisquare=pairwise_dict.get("gray_hist_grid_mean_chisquare", 0.0),
+            gray_hist_grid_max_chisquare=pairwise_dict.get("gray_hist_grid_max_chisquare", 0.0),
+            gray_hist_grid_min_chisquare=pairwise_dict.get("gray_hist_grid_min_chisquare", 0.0),
+            gray_hist_grid_var_chisquare=pairwise_dict.get("gray_hist_grid_var_chisquare", 0.0),
+            gray_hist_grid_std_chisquare=pairwise_dict.get("gray_hist_grid_std_chisquare", 0.0),
+
+            # Non-histogram
             whole_edge_density_diff=pairwise_dict.get("whole_edge_density_diff", 0.0),
-            
             grid_edge_mean_diff=pairwise_dict.get("grid_edge_mean_diff", 0.0),
             grid_edge_max_diff=pairwise_dict.get("grid_edge_max_diff", 0.0),
             grid_edge_min_diff=pairwise_dict.get("grid_edge_min_diff", 0.0),
             grid_edge_var_diff=pairwise_dict.get("grid_edge_var_diff", 0.0),
             grid_edge_std_diff=pairwise_dict.get("grid_edge_std_diff", 0.0),
-            
             ssim_mean=pairwise_dict.get("ssim_mean", 0.0),
             ssim_min=pairwise_dict.get("ssim_min", 0.0),
             ssim_variance=pairwise_dict.get("ssim_variance", 0.0),
-            
             mean_absolute_difference=pairwise_dict.get("mean_absolute_difference", 0.0),
             text_occupancy_diff=pairwise_dict.get("text_occupancy_diff", 0.0)
         )
@@ -822,8 +1008,8 @@ class FeatureValidator:
         # Assert limits
         if not (-1.01 <= pf.ssim_mean <= 1.01):
             logs.append(f"[Warning] Validator check failed: SSIM mean {pf.ssim_mean} is out of bounds [-1, 1]")
-        if pf.rgb_hist_dist_global < -1.01:
-            logs.append(f"[Warning] Validator check failed: Global RGB histogram score {pf.rgb_hist_dist_global} is out of bounds")
+        if not (-1.01 <= pf.rgb_hist_dist_global_correlation <= 1.01):
+            logs.append(f"[Warning] Validator check failed: Global Correlation score {pf.rgb_hist_dist_global_correlation} is out of bounds")
         if fa.edge_density < 0.0 or fb.edge_density < 0.0:
             logs.append(f"[Warning] Validator check failed: Negative edge density found")
         if fa.text_occupancy < 0.0 or fb.text_occupancy < 0.0:
@@ -860,119 +1046,6 @@ class CSVExporter:
         
         # Serialize list as a single comma-separated row
         return ",".join(str(val) for val in all_values)
-
-class MarkdownExporter:
-    @staticmethod
-    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig) -> str:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        explanation = rule_based_explain(fa, fb, pf)
-        
-        report = f"""# Pairwise Feature Vector Experiment Report
-**Date Generated:** {timestamp}
-**Engine Version:** 2.0.0
-**Schema Version:** 2.0.0
-
----
-
-## 1. Experiment Hyperparameters Configuration
-*   **Histogram Bins:** {config.hist_bins}
-*   **Histogram Comparison Metric:** {config.hist_method}
-*   **Color Mode:** {config.color_mode}
-*   **Histogram Grid Size:** {config.hist_grid_size}x{config.hist_grid_size}
-*   **Gaussian Blur Pre-filter:** {config.edge_blur}
-*   **Canny Thresholds (Low/High):** {config.canny_low} / {config.canny_high}
-*   **Edge Grid Size:** {config.edge_grid_size}x{config.edge_grid_size}
-*   **SSIM Window Size:** {config.ssim_win_size}
-*   **SSIM Gaussian Weights:** {config.ssim_gaussian}
-
----
-
-## 2. Extraction Results Summary
-
-### Frame Features (Scalar Metrics)
-| Metric | Frame A | Frame B |
-| :--- | :--- | :--- |
-| Brightness | {fa.brightness:.4f} | {fb.brightness:.4f} |
-| Contrast | {fa.contrast:.4f} | {fb.contrast:.4f} |
-| Shannon Entropy | {fa.entropy:.4f} | {fb.entropy:.4f} |
-| Edge Density | {fa.edge_density:.4f} | {fb.edge_density:.4f} |
-| Text Occupancy | {fa.text_occupancy:.4f} | {fb.text_occupancy:.4f} |
-
-### Comparative Metrics (Pairwise Differences)
-| Metric | Computed Value |
-| :--- | :--- |
-| Global RGB Histogram Distance | {pf.rgb_hist_dist_global:.4f} |
-| Global Gray Histogram Distance | {pf.gray_hist_dist_global:.4f} |
-| Grid RGB Hist Distance (Mean) | {pf.rgb_hist_grid_mean:.4f} |
-| Grid RGB Hist Distance (Max) | {pf.rgb_hist_grid_max:.4f} |
-| Grid RGB Hist Distance (Min) | {pf.rgb_hist_grid_min:.4f} |
-| Grid RGB Hist Distance (Var) | {pf.rgb_hist_grid_var:.4f} |
-| Grid Gray Hist Distance (Mean) | {pf.gray_hist_grid_mean:.4f} |
-| Grid Gray Hist Distance (Max) | {pf.gray_hist_grid_max:.4f} |
-| Grid Gray Hist Distance (Min) | {pf.gray_hist_grid_min:.4f} |
-| Grid Gray Hist Distance (Var) | {pf.gray_hist_grid_var:.4f} |
-| Whole Image Edge Density Diff | {pf.whole_edge_density_diff:.4f} |
-| Grid Edge Difference (Mean) | {pf.grid_edge_mean_diff:.4f} |
-| Grid Edge Difference (Max) | {pf.grid_edge_max_diff:.4f} |
-| Grid Edge Difference (Min) | {pf.grid_edge_min_diff:.4f} |
-| Grid Edge Difference (Var) | {pf.grid_edge_var_diff:.4f} |
-| SSIM (Mean Similarity) | {pf.ssim_mean:.4f} |
-| SSIM (Minimum similarity) | {pf.ssim_min:.4f} |
-| SSIM (Variance) | {pf.ssim_variance:.4f} |
-| Mean Absolute Difference (MAD) | {pf.mean_absolute_difference:.4f} |
-| Text Occupancy Difference | {pf.text_occupancy_diff:.4f} |
-
----
-
-## 3. Structural Modification Analysis
-{explanation}
-"""
-        return report
-
-# ==========================================
-# 7. Rule-Based Interpretation
-# ==========================================
-
-def rule_based_explain(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures) -> str:
-    lines = []
-    
-    # 1. SSIM structural assessment
-    if pf.ssim_mean > 0.98:
-        lines.append("*   **SSIM:** Very high structural similarity (layout identical, tiny changes).")
-    elif pf.ssim_mean > 0.90:
-        lines.append("*   **SSIM:** High structural similarity (same slide template, minor additions).")
-    else:
-        lines.append("*   **SSIM:** Low similarity. Substantial layout structure updates or slide transition.")
-
-    # 2. Histogram differences
-    if pf.gray_hist_dist_global < 0.05:
-        lines.append("*   **Histogram:** Very small appearance difference.")
-    elif pf.gray_hist_dist_global < 0.15:
-        lines.append("*   **Histogram:** Moderate appearance updates.")
-    else:
-        lines.append("*   **Histogram:** Large appearance shifts (colors or layout elements swapped).")
-        
-    # 3. Grid Edge modifications
-    if pf.grid_edge_max_diff > 0.08:
-        lines.append("*   **Edge:** Localized structural change detected (e.g. annotations drawn or bullet points added).")
-    else:
-        lines.append("*   **Edge:** Uniform edge difference across grids.")
-        
-    # 4. Text occupancy additions
-    if pf.text_occupancy_diff > 0.03:
-        lines.append("*   **Text Occupancy:** Text coverage changed. New text blocks likely appeared.")
-        
-    # 5. Overall Synthesis
-    if pf.ssim_mean > 0.95 and pf.text_occupancy_diff > 0.02 and pf.grid_edge_max_diff > 0.05:
-        verdict = "**Overall Verdict:** Likely answer reveal or new text insertion on the same slide structure."
-    elif pf.ssim_mean < 0.88:
-        verdict = "**Overall Verdict:** Slide transition. Completely new layout template detected."
-    elif pf.ssim_mean > 0.98 and pf.mean_absolute_difference < 1.0:
-        verdict = "**Overall Verdict:** Virtually identical frames (static slide)."
-    else:
-        verdict = "**Overall Verdict:** Slide modification with moderate annotations or layout adjustments."
-        
-    return "\n".join(lines) + "\n\n" + verdict
 
 # ==========================================
 # 8. Decoupled Visualizers
@@ -1088,7 +1161,8 @@ def render_pairwise_feature_lab():
         text_thresh=st.session_state["text_thresh"],
         text_kernel=st.session_state["text_kernel"],
         text_iterations=st.session_state["text_iterations"],
-        text_min_area=st.session_state["text_min_area"]
+        text_min_area=st.session_state["text_min_area"],
+        hist_epsilon=st.session_state.get("hist_epsilon", 1e-10)
     )
     
     # --- Persistent Experiment Configuration Banner ---
@@ -1195,9 +1269,16 @@ def render_pairwise_feature_lab():
         st.markdown("**Comparative Pairwise Metric Statistics (Section B)**")
         df_pairwise = pd.DataFrame({
             "Pairwise Feature Metric": [
-                "Global RGB Histogram Distance", "Global Gray Histogram Distance",
-                "Grid RGB Histogram Dist (Mean / Max / Min / Var / Std)",
-                "Grid Gray Histogram Dist (Mean / Max / Min / Var / Std)",
+                "Global RGB Correlation (Higher = Better)", "Global RGB Intersection (Higher = Better)", "Global RGB Bhattacharyya (Lower = Better)", "Global RGB Chi-Square (Lower = Better)",
+                "Global Gray Correlation (Higher = Better)", "Global Gray Intersection (Higher = Better)", "Global Gray Bhattacharyya (Lower = Better)", "Global Gray Chi-Square (Lower = Better)",
+                "Grid RGB Correlation (Mean / Max / Min / Var / Std)",
+                "Grid RGB Intersection (Mean / Max / Min / Var / Std)",
+                "Grid RGB Bhattacharyya (Mean / Max / Min / Var / Std)",
+                "Grid RGB Chi-Square (Mean / Max / Min / Var / Std)",
+                "Grid Gray Correlation (Mean / Max / Min / Var / Std)",
+                "Grid Gray Intersection (Mean / Max / Min / Var / Std)",
+                "Grid Gray Bhattacharyya (Mean / Max / Min / Var / Std)",
+                "Grid Gray Chi-Square (Mean / Max / Min / Var / Std)",
                 "Whole Edge Density Diff",
                 "Grid Edge Difference (Mean / Max / Min / Var / Std)",
                 "SSIM Map Stats (Mean / Min / Var)",
@@ -1205,9 +1286,16 @@ def render_pairwise_feature_lab():
                 "Text Occupancy Diff"
             ],
             "Pairwise Metric Value": [
-                f"{pf.rgb_hist_dist_global:.4f}", f"{pf.gray_hist_dist_global:.4f}",
-                f"{pf.rgb_hist_grid_mean:.4f} / {pf.rgb_hist_grid_max:.4f} / {pf.rgb_hist_grid_min:.4f} / {pf.rgb_hist_grid_var:.4f} / {pf.rgb_hist_grid_std:.4f}",
-                f"{pf.gray_hist_grid_mean:.4f} / {pf.gray_hist_grid_max:.4f} / {pf.gray_hist_grid_min:.4f} / {pf.gray_hist_grid_var:.4f} / {pf.gray_hist_grid_std:.4f}",
+                f"{pf.rgb_hist_dist_global_correlation:.4f}", f"{pf.rgb_hist_dist_global_intersection:.4f}", f"{pf.rgb_hist_dist_global_bhattacharyya:.4f}", f"{pf.rgb_hist_dist_global_chisquare:.4f}",
+                f"{pf.gray_hist_dist_global_correlation:.4f}", f"{pf.gray_hist_dist_global_intersection:.4f}", f"{pf.gray_hist_dist_global_bhattacharyya:.4f}", f"{pf.gray_hist_dist_global_chisquare:.4f}",
+                f"{pf.rgb_hist_grid_mean_correlation:.4f} / {pf.rgb_hist_grid_max_correlation:.4f} / {pf.rgb_hist_grid_min_correlation:.4f} / {pf.rgb_hist_grid_var_correlation:.4f} / {pf.rgb_hist_grid_std_correlation:.4f}",
+                f"{pf.rgb_hist_grid_mean_intersection:.4f} / {pf.rgb_hist_grid_max_intersection:.4f} / {pf.rgb_hist_grid_min_intersection:.4f} / {pf.rgb_hist_grid_var_intersection:.4f} / {pf.rgb_hist_grid_std_intersection:.4f}",
+                f"{pf.rgb_hist_grid_mean_bhattacharyya:.4f} / {pf.rgb_hist_grid_max_bhattacharyya:.4f} / {pf.rgb_hist_grid_min_bhattacharyya:.4f} / {pf.rgb_hist_grid_var_bhattacharyya:.4f} / {pf.rgb_hist_grid_std_bhattacharyya:.4f}",
+                f"{pf.rgb_hist_grid_mean_chisquare:.4f} / {pf.rgb_hist_grid_max_chisquare:.4f} / {pf.rgb_hist_grid_min_chisquare:.4f} / {pf.rgb_hist_grid_var_chisquare:.4f} / {pf.rgb_hist_grid_std_chisquare:.4f}",
+                f"{pf.gray_hist_grid_mean_correlation:.4f} / {pf.gray_hist_grid_max_correlation:.4f} / {pf.gray_hist_grid_min_correlation:.4f} / {pf.gray_hist_grid_var_correlation:.4f} / {pf.gray_hist_grid_std_correlation:.4f}",
+                f"{pf.gray_hist_grid_mean_intersection:.4f} / {pf.gray_hist_grid_max_intersection:.4f} / {pf.gray_hist_grid_min_intersection:.4f} / {pf.gray_hist_grid_var_intersection:.4f} / {pf.gray_hist_grid_std_intersection:.4f}",
+                f"{pf.gray_hist_grid_mean_bhattacharyya:.4f} / {pf.gray_hist_grid_max_bhattacharyya:.4f} / {pf.gray_hist_grid_min_bhattacharyya:.4f} / {pf.gray_hist_grid_var_bhattacharyya:.4f} / {pf.gray_hist_grid_std_bhattacharyya:.4f}",
+                f"{pf.gray_hist_grid_mean_chisquare:.4f} / {pf.gray_hist_grid_max_chisquare:.4f} / {pf.gray_hist_grid_min_chisquare:.4f} / {pf.gray_hist_grid_var_chisquare:.4f} / {pf.gray_hist_grid_std_chisquare:.4f}",
                 f"{pf.whole_edge_density_diff:.4f}",
                 f"{pf.grid_edge_mean_diff:.4f} / {pf.grid_edge_max_diff:.4f} / {pf.grid_edge_min_diff:.4f} / {pf.grid_edge_var_diff:.4f} / {pf.grid_edge_std_diff:.4f}",
                 f"{pf.ssim_mean:.4f} / {pf.ssim_min:.4f} / {pf.ssim_variance:.4f}",
@@ -1220,40 +1308,25 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    col_rep, col_csv = st.columns(2)
-    with col_rep:
-        st.markdown("#### 🔬 Metric Interpretation & Reports")
-        st.write(rule_based_explain(fa, fb, pf))
-        
-        md_text = MarkdownExporter.export(fa, fb, pf, config)
-        st.download_button(
-            label="📄 Generate Experiment Report (.md)",
-            data=md_text,
-            file_name=f"experiment_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-            mime="text/markdown",
-            use_container_width=True
-        )
-        
-    with col_csv:
-        st.markdown("#### 💾 CSV Export Preview")
-        # Prepare CSV exporter and inject actual frame width/height
-        raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
-        csv_parts = raw_csv_row.split(",")
-        # Inject width and height
-        h_orig, w_orig = img_a_orig.shape[:2]
-        csv_parts[6] = str(w_orig)
-        csv_parts[7] = str(h_orig)
-        final_csv_row = ",".join(csv_parts)
-        
-        st.code(final_csv_row, language="text")
-        
-        st.download_button(
-            label="💾 Download Pairwise Vector CSV (Headerless)",
-            data=final_csv_row,
-            file_name="pairwise_vector.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+    st.markdown("#### 💾 CSV Export Preview")
+    # Prepare CSV exporter and inject actual frame width/height
+    raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
+    csv_parts = raw_csv_row.split(",")
+    # Inject width and height
+    h_orig, w_orig = img_a_orig.shape[:2]
+    csv_parts[6] = str(w_orig)
+    csv_parts[7] = str(h_orig)
+    final_csv_row = ",".join(csv_parts)
+    
+    st.code(final_csv_row, language="text")
+    
+    st.download_button(
+        label="💾 Download Pairwise Vector CSV (Headerless)",
+        data=final_csv_row,
+        file_name="pairwise_vector.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
         
     # --- DEBUG CONSOLE LOGS ---
     st.markdown("---")

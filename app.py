@@ -57,7 +57,8 @@ DEFAULT_SETTINGS = {
     "text_thresh": 127,
     "text_kernel": 5,
     "text_iterations": 2,
-    "text_min_area": 100
+    "text_min_area": 100,
+    "hist_epsilon": 1e-10
 }
 
 # Load saved settings if exist
@@ -66,8 +67,22 @@ if os.path.exists(SETTINGS_FILE):
     try:
         with open(SETTINGS_FILE, "r") as f:
             saved = json.load(f)
+            # Handle root-level select module
+            if "selected_module" in saved:
+                saved_settings["selected_module"] = saved["selected_module"]
+            # Handle ocr_module_settings
+            if "ocr_module_settings" in saved and isinstance(saved["ocr_module_settings"], dict):
+                for k, v in saved["ocr_module_settings"].items():
+                    if k in saved_settings:
+                        saved_settings[k] = v
+            # Handle pairwise_lab_settings
+            if "pairwise_lab_settings" in saved and isinstance(saved["pairwise_lab_settings"], dict):
+                for k, v in saved["pairwise_lab_settings"].items():
+                    if k in saved_settings:
+                        saved_settings[k] = v
+            # Fallback for old flat settings if present
             for k, v in saved.items():
-                if k in saved_settings:
+                if k in saved_settings and k not in ("ocr_module_settings", "pairwise_lab_settings"):
                     saved_settings[k] = v
     except Exception:
         pass
@@ -316,6 +331,12 @@ else:
         index=safe_index(hist_grid_size_opts, st.session_state["hist_grid_size"]),
         key="hist_grid_size"
     )
+    hist_epsilon = st.sidebar.number_input(
+        "Histogram Epsilon",
+        value=st.session_state["hist_epsilon"],
+        format="%.1e",
+        key="hist_epsilon"
+    )
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>Edge Detection Tuning</h4>", unsafe_allow_html=True)
@@ -363,10 +384,34 @@ else:
     text_min_area = st.sidebar.slider("Minimum Component Area", min_value=10, max_value=500, value=st.session_state["text_min_area"], key="text_min_area")
 
 # Save current settings to file dynamically
-current_settings = {}
-for k in DEFAULT_SETTINGS.keys():
+OCR_KEYS = {
+    "model_mode", "use_english_ocr", "preprocess_mode", "use_blur", "blur_kernel_size",
+    "use_dilation", "dilation_w", "dilation_h", "crop_mode", "ocr_tolerance_px",
+    "det_db_thresh", "det_db_unclip_ratio", "padding_px", "min_area_filter",
+    "ocr_preprocess_mode", "ocr_use_blur", "ocr_blur_kernel", "ocr_det_db_thresh",
+    "ocr_det_db_unclip_ratio", "empty_strategy"
+}
+
+PAIRWISE_KEYS = {
+    "hist_bins", "hist_method", "color_mode", "hist_grid_size", "edge_blur",
+    "canny_low", "canny_high", "edge_grid_size", "ssim_win_size", "ssim_gaussian",
+    "text_thresh", "text_kernel", "text_iterations", "text_min_area", "hist_epsilon"
+}
+
+current_settings = {
+    "selected_module": st.session_state.get("selected_module", "Single Frame Cropper"),
+    "ocr_module_settings": {},
+    "pairwise_lab_settings": {}
+}
+
+for k in OCR_KEYS:
     if k in st.session_state:
-        current_settings[k] = st.session_state[k]
+        current_settings["ocr_module_settings"][k] = st.session_state[k]
+
+for k in PAIRWISE_KEYS:
+    if k in st.session_state:
+        current_settings["pairwise_lab_settings"][k] = st.session_state[k]
+
 try:
     with open(SETTINGS_FILE, "w") as f:
         json.dump(current_settings, f, indent=4)
