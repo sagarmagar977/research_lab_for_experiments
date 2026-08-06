@@ -105,13 +105,9 @@ def render_batch_dataset_generator():
         
         csv_rows = []
         
-        # Define exact headers matching our expanded output (with GroundTruth integrated as target label)
+        # Define exact headers matching our clean 120-column output (119 features + 1 target label at the end)
         headers = [
-            "Frame_A", "Frame_B", "Feature_Engine_Version", "Feature_Schema_Version", "Experiment_Version", "Timestamp", 
-            "Image_Width", "Image_Height", "Grid_Size", "Histogram_Bins", "Histogram_Comparison_Metric", "Color_Mode", "SSIM_Window_Size", "Hyperparameters_JSON",
-            "GroundTruth", # Target Label
-            
-            # Frame A features
+            # Frame A features (30)
             "FrameA_Brightness", "FrameA_Contrast", "FrameA_Entropy", "FrameA_Edge_Density", "FrameA_Text_Occupancy",
             "FrameA_Global_RGB_Hist_Mean", "FrameA_Global_RGB_Hist_Max", "FrameA_Global_RGB_Hist_Min", "FrameA_Global_RGB_Hist_Var", "FrameA_Global_RGB_Hist_Std",
             "FrameA_Global_Gray_Hist_Mean", "FrameA_Global_Gray_Hist_Max", "FrameA_Global_Gray_Hist_Min", "FrameA_Global_Gray_Hist_Var", "FrameA_Global_Gray_Hist_Std",
@@ -119,7 +115,7 @@ def render_batch_dataset_generator():
             "FrameA_Grid_Gray_Hist_Mean", "FrameA_Grid_Gray_Hist_Max", "FrameA_Grid_Gray_Hist_Min", "FrameA_Grid_Gray_Hist_Var", "FrameA_Grid_Gray_Hist_Std",
             "FrameA_Grid_Edge_Mean", "FrameA_Grid_Edge_Max", "FrameA_Grid_Edge_Min", "FrameA_Grid_Edge_Var", "FrameA_Grid_Edge_Std",
             
-            # Frame B features
+            # Frame B features (30)
             "FrameB_Brightness", "FrameB_Contrast", "FrameB_Entropy", "FrameB_Edge_Density", "FrameB_Text_Occupancy",
             "FrameB_Global_RGB_Hist_Mean", "FrameB_Global_RGB_Hist_Max", "FrameB_Global_RGB_Hist_Min", "FrameB_Global_RGB_Hist_Var", "FrameB_Global_RGB_Hist_Std",
             "FrameB_Global_Gray_Hist_Mean", "FrameB_Global_Gray_Hist_Max", "FrameB_Global_Gray_Hist_Min", "FrameB_Global_Gray_Hist_Var", "FrameB_Global_Gray_Hist_Std",
@@ -127,7 +123,7 @@ def render_batch_dataset_generator():
             "FrameB_Grid_Gray_Hist_Mean", "FrameB_Grid_Gray_Hist_Max", "FrameB_Grid_Gray_Hist_Min", "FrameB_Grid_Gray_Hist_Var", "FrameB_Grid_Gray_Hist_Std",
             "FrameB_Grid_Edge_Mean", "FrameB_Grid_Edge_Max", "FrameB_Grid_Edge_Min", "FrameB_Grid_Edge_Var", "FrameB_Grid_Edge_Std",
             
-            # Pairwise features
+            # Pairwise features (59)
             # Global RGB
             "Global_RGB_Histogram_Dist_Correlation", "Global_RGB_Histogram_Dist_Intersection", "Global_RGB_Histogram_Dist_Bhattacharyya", "Global_RGB_Histogram_Dist_ChiSquare",
             # Global Grayscale
@@ -149,8 +145,38 @@ def render_batch_dataset_generator():
             "Whole_Edge_Density_Diff",
             "Grid_Edge_Mean_Diff", "Grid_Edge_Max_Diff", "Grid_Edge_Min_Diff", "Grid_Edge_Var_Diff", "Grid_Edge_Std_Diff",
             "SSIM_Mean", "SSIM_Min", "SSIM_Variance",
-            "Mean_Absolute_Difference", "Text_Occupancy_Diff"
+            "Mean_Absolute_Difference", "Text_Occupancy_Diff",
+            
+            # Target Label
+            "GroundTruth"
         ]
+        
+        # Prepare metadata sidecar dict
+        metadata_json = {
+            "experiment_id": f"experiment_{crop_subdir}",
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "software": {
+                "feature_engine_version": "2.1.0",
+                "opencv_version": cv2.__version__
+            },
+            "configuration": {
+                "hist_bins": config.hist_bins,
+                "color_mode": config.color_mode,
+                "hist_grid_size": config.hist_grid_size,
+                "edge_blur": config.edge_blur,
+                "canny_low": config.canny_low,
+                "canny_high": config.canny_high,
+                "edge_grid_size": config.edge_grid_size,
+                "ssim_win_size": config.ssim_win_size,
+                "ssim_gaussian": config.ssim_gaussian,
+                "text_thresh": config.text_thresh,
+                "text_kernel": config.text_kernel,
+                "text_iterations": config.text_iterations,
+                "text_min_area": config.text_min_area,
+                "hist_epsilon": config.hist_epsilon
+            },
+            "frame_pairs": []
+        }
         
         total_pairs = len(all_files) - 1
         st.write("#### Processing Log")
@@ -164,6 +190,14 @@ def render_batch_dataset_generator():
             # Assign GroundTruth based on whether Frame_B exists in candidate files
             ground_truth = 1 if fname_b in candidate_files else 0
             
+            # Record pair mapping in metadata JSON
+            metadata_json["frame_pairs"].append({
+                "row_index": idx,
+                "frame_a": fname_a,
+                "frame_b": fname_b,
+                "ground_truth": ground_truth
+            })
+            
             try:
                 img_a_bgr = cv2.imread(os.path.join(crop_dir_path, fname_a))
                 img_b_bgr = cv2.imread(os.path.join(crop_dir_path, fname_b))
@@ -176,13 +210,10 @@ def render_batch_dataset_generator():
                 
                 fa, fb, pf, art, logs_ext = extractor.extract(img_a, img_b)
                 
-                # Render raw CSV row
-                raw_csv = CSVExporter.export(fname_a, fname_b, fa, fb, pf, config, ground_truth=ground_truth)
-                csv_parts = raw_csv.split(",")
-                # Inject width and height
-                h_orig, w_orig = img_a.shape[:2]
-                csv_parts[6] = str(w_orig)
-                csv_parts[7] = str(h_orig)
+                # Render 119 features CSV row and append ground truth label
+                raw_csv = CSVExporter.export(fa, fb, pf)
+                csv_parts = [float(val) for val in raw_csv.split(",")]
+                csv_parts.append(int(ground_truth))
                 
                 csv_rows.append(csv_parts)
                 
@@ -193,25 +224,130 @@ def render_batch_dataset_generator():
             
         status_text.text("Finished processing all frame pairs.")
         
-        # Create DataFrame, export to CSV file
+        # Create DataFrame
         df = pd.DataFrame(csv_rows, columns=headers)
-        output_filename = f"pairwise_dataset_{crop_subdir}.csv"
-        output_path = os.path.join(session_path, output_filename)
-        
-        # Save dataset inside the session folder directly
-        df.to_csv(output_path, index=False)
-        st.success(f"Consolidated dataset generated and saved to: `{os.path.abspath(output_path)}`")
         
         # Display dataset preview
         st.markdown("#### Dataset Preview (First 5 Rows)")
         st.dataframe(df.head(), use_container_width=True)
         
-        # Make the dataset downloadable directly
-        csv_data = df.to_csv(index=False)
-        st.download_button(
-            label="💾 Download Consolidated Dataset CSV",
-            data=csv_data,
-            file_name=output_filename,
-            mime="text/csv",
-            use_container_width=True
-        )
+        # 1. Save locally in the session folder as a backup
+        output_filename = f"candidate_frame_dataset_{crop_subdir}.csv"
+        csv_path_session = os.path.join(session_path, output_filename)
+        df.to_csv(csv_path_session, index=False)
+        
+        metadata_filename = f"experiment_{crop_subdir}.json"
+        json_path_session = os.path.join(session_path, metadata_filename)
+        with open(json_path_session, "w") as f:
+            json.dump(metadata_json, f, indent=4)
+            
+        st.info(f"Local backup saved to crop session directory.")
+        
+        # 2. Local File System Downloads Folder exporter (Creating Downloads/dataset/...)
+        st.markdown("---")
+        st.markdown("#### 📂 Local Downloads Directory Export")
+        st.write("Export all generated files to your system `Downloads` folder under the decoupled architecture.")
+        
+        export_btn = st.button("💾 Export all files to Downloads/dataset/", use_container_width=True, type="secondary")
+        if export_btn:
+            try:
+                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+                dataset_root = os.path.join(downloads_dir, "dataset")
+                
+                # Create decoupled subdirectories
+                datasets_dir = os.path.join(dataset_root, "datasets")
+                metadata_dir = os.path.join(dataset_root, "metadata")
+                
+                os.makedirs(datasets_dir, exist_ok=True)
+                os.makedirs(metadata_dir, exist_ok=True)
+                
+                # Write ML CSV
+                df.to_csv(os.path.join(datasets_dir, f"candidate_frame_dataset_{crop_subdir}.csv"), index=False)
+                
+                # Write Metadata JSON
+                with open(os.path.join(metadata_dir, f"experiment_{crop_subdir}.json"), "w") as f:
+                    json.dump(metadata_json, f, indent=4)
+                    
+                # Write Static Feature Manifest JSON
+                manifest = {}
+                for h in headers:
+                    if h == "GroundTruth":
+                        manifest[h] = {"type": "int", "group": "target", "description": "Target label (1 if selected candidate frame, 0 if discard)"}
+                        continue
+                    group = "features"
+                    desc = ""
+                    if "Brightness" in h:
+                        group, desc = "brightness", "Mean pixel intensity brightness"
+                    elif "Contrast" in h:
+                        group, desc = "contrast", "Standard deviation of pixel intensity contrast"
+                    elif "Entropy" in h:
+                        group, desc = "entropy", "Shannon entropy of pixel intensity distribution"
+                    elif "Edge_Density" in h:
+                        group, desc = "edge", "Canny edge pixel density ratio"
+                    elif "Text_Occupancy" in h:
+                        group, desc = "text", "OCR/text dilated mask occupancy ratio"
+                    elif "Global_RGB_Hist" in h:
+                        group, desc = "histogram", "Global RGB histogram bin value statistics"
+                    elif "Global_Gray_Hist" in h:
+                        group, desc = "histogram", "Global Grayscale histogram bin value statistics"
+                    elif "Grid_RGB_Hist" in h:
+                        group, desc = "histogram", "Local grid RGB cell histogram bin value statistics"
+                    elif "Grid_Gray_Hist" in h:
+                        group, desc = "histogram", "Local grid Grayscale cell histogram bin value statistics"
+                    elif "Grid_Edge" in h:
+                        group, desc = "edge", "Local grid cell Canny edge density statistics"
+                    elif "Global_RGB_Histogram_Dist" in h:
+                        group, desc = "histogram_comparison", f"Global RGB histogram comparison ({h.split('_')[-1]})"
+                    elif "Global_Gray_Histogram_Dist" in h:
+                        group, desc = "histogram_comparison", f"Global Grayscale histogram comparison ({h.split('_')[-1]})"
+                    elif "Grid_RGB_Histogram" in h:
+                        group, desc = "histogram_comparison", f"Local grid cell RGB histogram comparisons stats ({h.split('_')[-2]} {h.split('_')[-1]})"
+                    elif "Grid_Gray_Histogram" in h:
+                        group, desc = "histogram_comparison", f"Local grid cell Grayscale histogram comparisons stats ({h.split('_')[-2]} {h.split('_')[-1]})"
+                    elif "Whole_Edge_Density_Diff" in h:
+                        group, desc = "edge_comparison", "Whole frame Canny edge density absolute difference"
+                    elif "Grid_Edge" in h:
+                        group, desc = "edge_comparison", f"Local grid cell edge difference stats ({h.split('_')[-2]})"
+                    elif "SSIM" in h:
+                        group, desc = "structural_similarity", f"Structural Similarity Index metric ({h.split('_')[-1]})"
+                    elif "Mean_Absolute_Difference" in h:
+                        group, desc = "pixel_difference", "Mean Absolute pixel-to-pixel intensity Difference (MAD)"
+                    elif "Text_Occupancy_Diff" in h:
+                        group, desc = "text_comparison", "Absolute difference in text mask occupancy"
+
+                    target_f = "Frame A" if "FrameA" in h else "Frame B" if "FrameB" in h else "Pairwise comparison"
+                    manifest[h] = {
+                        "type": "float",
+                        "group": group,
+                        "description": f"{desc} ({target_f})"
+                    }
+                with open(os.path.join(dataset_root, "feature_manifest.json"), "w") as f:
+                    json.dump(manifest, f, indent=4)
+                    
+                st.success(f"Successfully exported all files into `{os.path.abspath(dataset_root)}` folder structure!")
+            except Exception as ex:
+                st.error(f"Failed to export files to downloads folder: {str(ex)}")
+                
+        # 3. Individual browser download triggers for standard environment compatibility
+        st.markdown("---")
+        st.markdown("#### 📥 Standard Browser Downloads")
+        
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            csv_data = df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download Dataset CSV",
+                data=csv_data,
+                file_name=output_filename,
+                mime="text/csv",
+                use_container_width=True
+            )
+        with col_dl2:
+            json_data = json.dumps(metadata_json, indent=4)
+            st.download_button(
+                label="📥 Download Metadata JSON",
+                data=json_data,
+                file_name=metadata_filename,
+                mime="application/json",
+                use_container_width=True
+            )

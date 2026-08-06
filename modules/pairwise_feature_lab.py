@@ -1021,28 +1021,9 @@ class FeatureValidator:
 
 class CSVExporter:
     @staticmethod
-    def export(frame_a_name: str, frame_b_name: str, fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig, ground_truth: int = 0) -> str:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        metadata = [
-            frame_a_name,
-            frame_b_name,
-            "2.0.0",  # Feature Engine Version
-            "2.0.0",  # Feature Schema Version
-            "1.0.0",  # Experiment Version
-            timestamp,
-            0,        # Placeholder for width, filled dynamically in render
-            0,        # Placeholder for height, filled dynamically in render
-            config.edge_grid_size,
-            config.hist_bins,
-            config.hist_method,
-            config.color_mode,
-            config.ssim_win_size,
-            json.dumps(asdict(config)).replace(",", ";"),  # Replace comma to prevent CSV formatting corruption
-            ground_truth
-        ]
-        
-        # Create CSV layout: Metadata + FrameA + FrameB + Pairwise Differences
-        all_values = metadata + fa.to_list() + fb.to_list() + pf.to_list()
+    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures) -> str:
+        # Create CSV layout: FrameA + FrameB + Pairwise Differences
+        all_values = fa.to_list() + fb.to_list() + pf.to_list()
         
         # Serialize list as a single comma-separated row
         return ",".join(str(val) for val in all_values)
@@ -1308,20 +1289,13 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    st.markdown("#### 💾 CSV Export Preview")
-    # Prepare CSV exporter and inject actual frame width/height
-    raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
-    csv_parts = raw_csv_row.split(",")
-    # Inject width and height
-    h_orig, w_orig = img_a_orig.shape[:2]
-    csv_parts[6] = str(w_orig)
-    csv_parts[7] = str(h_orig)
-    final_csv_row = ",".join(csv_parts)
+    st.markdown("#### 💾 CSV Export Preview (119 Features, Headerless)")
+    final_csv_row = CSVExporter.export(fa, fb, pf)
     
     st.code(final_csv_row, language="text")
     
     st.download_button(
-        label="💾 Download Pairwise Vector CSV (Headerless)",
+        label="💾 Download Pairwise Vector CSV (119 Features, Headerless)",
         data=final_csv_row,
         file_name="pairwise_vector.csv",
         mime="text/csv",

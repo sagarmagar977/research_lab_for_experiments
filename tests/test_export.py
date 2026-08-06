@@ -58,34 +58,14 @@ class TestExportersAndHistograms(unittest.TestCase):
                 
         pf = PairwiseFeatures(**pf_kwargs)
         
-        config = PairwiseFeatureConfig(
-            hist_bins=64,
-            hist_method="Correlation",
-            color_mode="RGB",
-            hist_grid_size=2,
-            edge_blur="None",
-            canny_low=50,
-            canny_high=150,
-            edge_grid_size=2,
-            ssim_win_size=7,
-            ssim_gaussian=False,
-            text_thresh=127,
-            text_kernel=5,
-            text_iterations=1,
-            text_min_area=10,
-            hist_epsilon=1e-10
-        )
-        csv_row_default = CSVExporter.export("fa.png", "fb.png", fa, fb, pf, config)
+        csv_row_default = CSVExporter.export(fa, fb, pf)
         parts_default = csv_row_default.split(",")
         
-        self.assertTrue(csv_row_default.startswith("fa.png,fb.png,2.0.0,2.0.0,1.0.0"))
-        self.assertEqual(parts_default[14], "0")
-        self.assertTrue("hist_bins" in parts_default[13])
-        self.assertTrue(";" in parts_default[13])  # Verify commas replaced with semicolons
-
-        csv_row_target = CSVExporter.export("fa.png", "fb.png", fa, fb, pf, config, ground_truth=1)
-        parts_target = csv_row_target.split(",")
-        self.assertEqual(parts_target[14], "1")
+        # Clean 119 features row
+        self.assertEqual(len(parts_default), 119)
+        # Check first and last elements are valid numbers
+        self.assertEqual(parts_default[0], "10.0")
+        self.assertEqual(parts_default[-1], "0.01")
 
     def test_histogram_mathematical_assertions(self):
         extractor = HistogramExtractor()
