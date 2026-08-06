@@ -205,11 +205,11 @@ def render_batch_dataset_generator():
         st.markdown("#### 📂 Local Downloads Directory Export")
         st.write("Export all generated files to your system `Downloads` folder under the decoupled architecture.")
         
-        export_btn = st.button("💾 Export all files to Downloads/dataset/", use_container_width=True, type="secondary")
+        export_btn = st.button("💾 Export all files to Downloads/downloads/dataset_export/", use_container_width=True, type="secondary")
         if export_btn:
             try:
                 downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-                dataset_root = os.path.join(downloads_dir, "dataset")
+                dataset_root = os.path.join(downloads_dir, "downloads", f"dataset_export_{crop_subdir}")
                 
                 # Create decoupled subdirectories
                 datasets_dir = os.path.join(dataset_root, "datasets")

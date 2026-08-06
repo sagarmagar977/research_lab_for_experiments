@@ -1347,6 +1347,52 @@ def render_pairwise_feature_lab():
         mime="text/csv",
         use_container_width=True
     )
+
+    # Local Downloads Directory Exporter
+    st.markdown("---")
+    st.markdown("#### 📂 Local Downloads Directory Export")
+    st.write("Export all generated single-pair files to your local system `Downloads/downloads` directory.")
+    
+    single_export_btn = st.button("💾 Export all single-pair files to Downloads/downloads/pairwise_single_export/", use_container_width=True, key="btn_single_export_local")
+    if single_export_btn:
+        try:
+            downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+            target_dir = os.path.join(downloads_dir, "downloads", "pairwise_single_export")
+            os.makedirs(target_dir, exist_ok=True)
+            
+            # Write CSV
+            with open(os.path.join(target_dir, "pairwise_vector.csv"), "w") as f:
+                f.write(final_csv_row)
+                
+            # Write Metadata JSON
+            metadata_single = {
+                "experiment_type": "pairwise_single_comparison",
+                "frame_a": file_a.name,
+                "frame_b": file_b.name,
+                "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "configuration": {
+                    "hist_bins": config.hist_bins,
+                    "color_mode": config.color_mode,
+                    "hist_grid_size": config.hist_grid_size,
+                    "edge_blur": config.edge_blur,
+                    "canny_low": config.canny_low,
+                    "canny_high": config.canny_high,
+                    "edge_grid_size": config.edge_grid_size,
+                    "ssim_win_size": config.ssim_win_size,
+                    "ssim_gaussian": config.ssim_gaussian,
+                    "text_thresh": config.text_thresh,
+                    "text_kernel": config.text_kernel,
+                    "text_iterations": config.text_iterations,
+                    "text_min_area": config.text_min_area,
+                    "hist_epsilon": config.hist_epsilon
+                }
+            }
+            with open(os.path.join(target_dir, "pairwise_metadata.json"), "w") as f:
+                json.dump(metadata_single, f, indent=4)
+                
+            st.success(f"Successfully exported all single-pair files into `{os.path.abspath(target_dir)}` folder!")
+        except Exception as ex:
+            st.error(f"Failed to export files: {str(ex)}")
         
     # --- DEBUG CONSOLE LOGS ---
     st.markdown("---")
