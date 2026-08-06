@@ -1,5 +1,5 @@
 {
-    "selected_module": "Pairwise Feature Vector Lab",
+    "selected_module": "Candidate Frame Selector",
     "model_mode": "Compare Both Side-by-Side",
     "use_english_ocr": true,
     "preprocess_mode": "Adaptive Thresholding",
@@ -27,7 +27,7 @@
     "edge_blur": "5x5",
     "canny_low": 50,
     "canny_high": 150,
-    "edge_grid_size": 3,
+    "edge_grid_size": 4,
     "ssim_win_size": 11,
     "ssim_gaussian": true,
     "text_thresh": 127,

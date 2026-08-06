@@ -40,12 +40,50 @@ class FrameFeatures:
     entropy: float
     edge_density: float
     text_occupancy: float
+    
+    # Global Histogram Stats
+    global_rgb_hist_mean: float
+    global_rgb_hist_max: float
+    global_rgb_hist_min: float
+    global_rgb_hist_var: float
+    global_rgb_hist_std: float
+    global_gray_hist_mean: float
+    global_gray_hist_max: float
+    global_gray_hist_min: float
+    global_gray_hist_var: float
+    global_gray_hist_std: float
+    
+    # Grid Histogram Stats
+    grid_rgb_hist_mean: float
+    grid_rgb_hist_max: float
+    grid_rgb_hist_min: float
+    grid_rgb_hist_var: float
+    grid_rgb_hist_std: float
+    grid_gray_hist_mean: float
+    grid_gray_hist_max: float
+    grid_gray_hist_min: float
+    grid_gray_hist_var: float
+    grid_gray_hist_std: float
+    
+    # Grid Edge Stats
+    grid_edge_mean: float
+    grid_edge_max: float
+    grid_edge_min: float
+    grid_edge_var: float
+    grid_edge_std: float
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     def to_list(self) -> list:
-        return [self.brightness, self.contrast, self.entropy, self.edge_density, self.text_occupancy]
+        return [
+            self.brightness, self.contrast, self.entropy, self.edge_density, self.text_occupancy,
+            self.global_rgb_hist_mean, self.global_rgb_hist_max, self.global_rgb_hist_min, self.global_rgb_hist_var, self.global_rgb_hist_std,
+            self.global_gray_hist_mean, self.global_gray_hist_max, self.global_gray_hist_min, self.global_gray_hist_var, self.global_gray_hist_std,
+            self.grid_rgb_hist_mean, self.grid_rgb_hist_max, self.grid_rgb_hist_min, self.grid_rgb_hist_var, self.grid_rgb_hist_std,
+            self.grid_gray_hist_mean, self.grid_gray_hist_max, self.grid_gray_hist_min, self.grid_gray_hist_var, self.grid_gray_hist_std,
+            self.grid_edge_mean, self.grid_edge_max, self.grid_edge_min, self.grid_edge_var, self.grid_edge_std
+        ]
 
 @dataclass
 class PairwiseFeatures:
@@ -189,7 +227,7 @@ class HistogramExtractor(BaseExtractor):
             ent_key = ("entropy", img_hash)
             if ent_key in cache:
                 logs.append(f"[Histogram] Single frame metrics cache HIT")
-                return cache[ent_key]
+                return cache[ent_key].copy()
                 
             # Brightness (mean) and Contrast (std)
             brightness = float(np.mean(gray))
@@ -202,7 +240,7 @@ class HistogramExtractor(BaseExtractor):
             
             res = {"brightness": brightness, "contrast": contrast, "entropy": entropy}
             cache[ent_key] = res
-            return res
+            return res.copy()
 
         fm_a = get_frame_metrics(img_a, gray_a, hash_a)
         fm_b = get_frame_metrics(img_b, gray_b, hash_b)
@@ -227,6 +265,32 @@ class HistogramExtractor(BaseExtractor):
         gray_hist_a = cache[hist_gray_key_a]
         gray_hist_b = cache[hist_gray_key_b]
         
+        # Compute global histogram stats for A
+        fm_a["global_rgb_hist_mean"] = float(np.mean(rgb_hist_a))
+        fm_a["global_rgb_hist_max"] = float(np.max(rgb_hist_a))
+        fm_a["global_rgb_hist_min"] = float(np.min(rgb_hist_a))
+        fm_a["global_rgb_hist_var"] = float(np.var(rgb_hist_a))
+        fm_a["global_rgb_hist_std"] = float(np.std(rgb_hist_a))
+        
+        fm_a["global_gray_hist_mean"] = float(np.mean(gray_hist_a))
+        fm_a["global_gray_hist_max"] = float(np.max(gray_hist_a))
+        fm_a["global_gray_hist_min"] = float(np.min(gray_hist_a))
+        fm_a["global_gray_hist_var"] = float(np.var(gray_hist_a))
+        fm_a["global_gray_hist_std"] = float(np.std(gray_hist_a))
+        
+        # Compute global histogram stats for B
+        fm_b["global_rgb_hist_mean"] = float(np.mean(rgb_hist_b))
+        fm_b["global_rgb_hist_max"] = float(np.max(rgb_hist_b))
+        fm_b["global_rgb_hist_min"] = float(np.min(rgb_hist_b))
+        fm_b["global_rgb_hist_var"] = float(np.var(rgb_hist_b))
+        fm_b["global_rgb_hist_std"] = float(np.std(rgb_hist_b))
+        
+        fm_b["global_gray_hist_mean"] = float(np.mean(gray_hist_b))
+        fm_b["global_gray_hist_max"] = float(np.max(gray_hist_b))
+        fm_b["global_gray_hist_min"] = float(np.min(gray_hist_b))
+        fm_b["global_gray_hist_var"] = float(np.var(gray_hist_b))
+        fm_b["global_gray_hist_std"] = float(np.std(gray_hist_b))
+        
         rgb_global_dist = self.compare_hist(rgb_hist_a, rgb_hist_b, config.hist_method)
         gray_global_dist = self.compare_hist(gray_hist_a, gray_hist_b, config.hist_method)
         
@@ -237,6 +301,12 @@ class HistogramExtractor(BaseExtractor):
         rgb_grid_scores = []
         gray_grid_scores = []
         
+        grid_rgb_means_a, grid_rgb_maxes_a, grid_rgb_mins_a, grid_rgb_vars_a, grid_rgb_stds_a = [], [], [], [], []
+        grid_gray_means_a, grid_gray_maxes_a, grid_gray_mins_a, grid_gray_vars_a, grid_gray_stds_a = [], [], [], [], []
+        
+        grid_rgb_means_b, grid_rgb_maxes_b, grid_rgb_mins_b, grid_rgb_vars_b, grid_rgb_stds_b = [], [], [], [], []
+        grid_gray_means_b, grid_gray_maxes_b, grid_gray_mins_b, grid_gray_vars_b, grid_gray_stds_b = [], [], [], [], []
+        
         for idx, ((ya1, ya2, xa1, xa2), (yb1, yb2, xb1, xb2)) in enumerate(zip(cells_a, cells_b)):
             cell_a = img_a[ya1:ya2, xa1:xa2]
             cell_b = img_b[yb1:yb2, xb1:xb2]
@@ -246,11 +316,63 @@ class HistogramExtractor(BaseExtractor):
             c_gray_a = self.calc_norm_hist(cell_a, config.hist_bins, "Grayscale")
             c_gray_b = self.calc_norm_hist(cell_b, config.hist_bins, "Grayscale")
             
+            # Statistics of individual cells for A
+            grid_rgb_means_a.append(np.mean(c_rgb_a))
+            grid_rgb_maxes_a.append(np.max(c_rgb_a))
+            grid_rgb_mins_a.append(np.min(c_rgb_a))
+            grid_rgb_vars_a.append(np.var(c_rgb_a))
+            grid_rgb_stds_a.append(np.std(c_rgb_a))
+            
+            grid_gray_means_a.append(np.mean(c_gray_a))
+            grid_gray_maxes_a.append(np.max(c_gray_a))
+            grid_gray_mins_a.append(np.min(c_gray_a))
+            grid_gray_vars_a.append(np.var(c_gray_a))
+            grid_gray_stds_a.append(np.std(c_gray_a))
+            
+            # Statistics of individual cells for B
+            grid_rgb_means_b.append(np.mean(c_rgb_b))
+            grid_rgb_maxes_b.append(np.max(c_rgb_b))
+            grid_rgb_mins_b.append(np.min(c_rgb_b))
+            grid_rgb_vars_b.append(np.var(c_rgb_b))
+            grid_rgb_stds_b.append(np.std(c_rgb_b))
+            
+            grid_gray_means_b.append(np.mean(c_gray_b))
+            grid_gray_maxes_b.append(np.max(c_gray_b))
+            grid_gray_mins_b.append(np.min(c_gray_b))
+            grid_gray_vars_b.append(np.var(c_gray_b))
+            grid_gray_stds_b.append(np.std(c_gray_b))
+            
             rgb_grid_scores.append(self.compare_hist(c_rgb_a, c_rgb_b, config.hist_method))
             gray_grid_scores.append(self.compare_hist(c_gray_a, c_gray_b, config.hist_method))
             
         rgb_grid_scores = np.array(rgb_grid_scores)
         gray_grid_scores = np.array(gray_grid_scores)
+        
+        # Merge grid cell stats for A
+        fm_a["grid_rgb_hist_mean"] = float(np.mean(grid_rgb_means_a))
+        fm_a["grid_rgb_hist_max"] = float(np.mean(grid_rgb_maxes_a))
+        fm_a["grid_rgb_hist_min"] = float(np.mean(grid_rgb_mins_a))
+        fm_a["grid_rgb_hist_var"] = float(np.mean(grid_rgb_vars_a))
+        fm_a["grid_rgb_hist_std"] = float(np.mean(grid_rgb_stds_a))
+        
+        fm_a["grid_gray_hist_mean"] = float(np.mean(grid_gray_means_a))
+        fm_a["grid_gray_hist_max"] = float(np.mean(grid_gray_maxes_a))
+        fm_a["grid_gray_hist_min"] = float(np.mean(grid_gray_mins_a))
+        fm_a["grid_gray_hist_var"] = float(np.mean(grid_gray_vars_a))
+        fm_a["grid_gray_hist_std"] = float(np.mean(grid_gray_stds_a))
+        
+        # Merge grid cell stats for B
+        fm_b["grid_rgb_hist_mean"] = float(np.mean(grid_rgb_means_b))
+        fm_b["grid_rgb_hist_max"] = float(np.mean(grid_rgb_maxes_b))
+        fm_b["grid_rgb_hist_min"] = float(np.mean(grid_rgb_mins_b))
+        fm_b["grid_rgb_hist_var"] = float(np.mean(grid_rgb_vars_b))
+        fm_b["grid_rgb_hist_std"] = float(np.mean(grid_rgb_stds_b))
+        
+        fm_b["grid_gray_hist_mean"] = float(np.mean(grid_gray_means_b))
+        fm_b["grid_gray_hist_max"] = float(np.mean(grid_gray_maxes_b))
+        fm_b["grid_gray_hist_min"] = float(np.mean(grid_gray_mins_b))
+        fm_b["grid_gray_hist_var"] = float(np.mean(grid_gray_vars_b))
+        fm_b["grid_gray_hist_std"] = float(np.mean(grid_gray_stds_b))
         
         pairwise_res = {
             "rgb_hist_dist_global": rgb_global_dist,
@@ -336,19 +458,42 @@ class EdgeExtractor(BaseExtractor):
         cells_a = self.get_grid_cells(edges_a.shape, config.edge_grid_size)
         cells_b = self.get_grid_cells(edges_b.shape, config.edge_grid_size)
         
+        densities_a = []
+        densities_b = []
         cell_diffs = []
+        
         for (ya1, ya2, xa1, xa2), (yb1, yb2, xb1, xb2) in zip(cells_a, cells_b):
             cell_a = edges_a[ya1:ya2, xa1:xa2]
             cell_b = edges_b[yb1:yb2, xb1:xb2]
             
             c_dens_a = np.sum(cell_a == 255) / cell_a.size
             c_dens_b = np.sum(cell_b == 255) / cell_b.size
+            
+            densities_a.append(c_dens_a)
+            densities_b.append(c_dens_b)
             cell_diffs.append(abs(c_dens_a - c_dens_b))
             
         cell_diffs = np.array(cell_diffs)
+        densities_a = np.array(densities_a)
+        densities_b = np.array(densities_b)
         
-        fm_a = {"edge_density": density_a}
-        fm_b = {"edge_density": density_b}
+        fm_a = {
+            "edge_density": density_a,
+            "grid_edge_mean": float(np.mean(densities_a)),
+            "grid_edge_max": float(np.max(densities_a)),
+            "grid_edge_min": float(np.min(densities_a)),
+            "grid_edge_var": float(np.var(densities_a)),
+            "grid_edge_std": float(np.std(densities_a))
+        }
+        
+        fm_b = {
+            "edge_density": density_b,
+            "grid_edge_mean": float(np.mean(densities_b)),
+            "grid_edge_max": float(np.max(densities_b)),
+            "grid_edge_min": float(np.min(densities_b)),
+            "grid_edge_var": float(np.var(densities_b)),
+            "grid_edge_std": float(np.std(densities_b))
+        }
         
         pairwise_res = {
             "whole_edge_density_diff": whole_diff,
@@ -541,7 +686,37 @@ class PairwiseFeatureExtractor:
             contrast=frame_a_dict.get("contrast", 0.0),
             entropy=frame_a_dict.get("entropy", 0.0),
             edge_density=frame_a_dict.get("edge_density", 0.0),
-            text_occupancy=frame_a_dict.get("text_occupancy", 0.0)
+            text_occupancy=frame_a_dict.get("text_occupancy", 0.0),
+            
+            global_rgb_hist_mean=frame_a_dict.get("global_rgb_hist_mean", 0.0),
+            global_rgb_hist_max=frame_a_dict.get("global_rgb_hist_max", 0.0),
+            global_rgb_hist_min=frame_a_dict.get("global_rgb_hist_min", 0.0),
+            global_rgb_hist_var=frame_a_dict.get("global_rgb_hist_var", 0.0),
+            global_rgb_hist_std=frame_a_dict.get("global_rgb_hist_std", 0.0),
+            
+            global_gray_hist_mean=frame_a_dict.get("global_gray_hist_mean", 0.0),
+            global_gray_hist_max=frame_a_dict.get("global_gray_hist_max", 0.0),
+            global_gray_hist_min=frame_a_dict.get("global_gray_hist_min", 0.0),
+            global_gray_hist_var=frame_a_dict.get("global_gray_hist_var", 0.0),
+            global_gray_hist_std=frame_a_dict.get("global_gray_hist_std", 0.0),
+            
+            grid_rgb_hist_mean=frame_a_dict.get("grid_rgb_hist_mean", 0.0),
+            grid_rgb_hist_max=frame_a_dict.get("grid_rgb_hist_max", 0.0),
+            grid_rgb_hist_min=frame_a_dict.get("grid_rgb_hist_min", 0.0),
+            grid_rgb_hist_var=frame_a_dict.get("grid_rgb_hist_var", 0.0),
+            grid_rgb_hist_std=frame_a_dict.get("grid_rgb_hist_std", 0.0),
+            
+            grid_gray_hist_mean=frame_a_dict.get("grid_gray_hist_mean", 0.0),
+            grid_gray_hist_max=frame_a_dict.get("grid_gray_hist_max", 0.0),
+            grid_gray_hist_min=frame_a_dict.get("grid_gray_hist_min", 0.0),
+            grid_gray_hist_var=frame_a_dict.get("grid_gray_hist_var", 0.0),
+            grid_gray_hist_std=frame_a_dict.get("grid_gray_hist_std", 0.0),
+            
+            grid_edge_mean=frame_a_dict.get("grid_edge_mean", 0.0),
+            grid_edge_max=frame_a_dict.get("grid_edge_max", 0.0),
+            grid_edge_min=frame_a_dict.get("grid_edge_min", 0.0),
+            grid_edge_var=frame_a_dict.get("grid_edge_var", 0.0),
+            grid_edge_std=frame_a_dict.get("grid_edge_std", 0.0)
         )
         
         fb = FrameFeatures(
@@ -549,7 +724,37 @@ class PairwiseFeatureExtractor:
             contrast=frame_b_dict.get("contrast", 0.0),
             entropy=frame_b_dict.get("entropy", 0.0),
             edge_density=frame_b_dict.get("edge_density", 0.0),
-            text_occupancy=frame_b_dict.get("text_occupancy", 0.0)
+            text_occupancy=frame_b_dict.get("text_occupancy", 0.0),
+            
+            global_rgb_hist_mean=frame_b_dict.get("global_rgb_hist_mean", 0.0),
+            global_rgb_hist_max=frame_b_dict.get("global_rgb_hist_max", 0.0),
+            global_rgb_hist_min=frame_b_dict.get("global_rgb_hist_min", 0.0),
+            global_rgb_hist_var=frame_b_dict.get("global_rgb_hist_var", 0.0),
+            global_rgb_hist_std=frame_b_dict.get("global_rgb_hist_std", 0.0),
+            
+            global_gray_hist_mean=frame_b_dict.get("global_gray_hist_mean", 0.0),
+            global_gray_hist_max=frame_b_dict.get("global_gray_hist_max", 0.0),
+            global_gray_hist_min=frame_b_dict.get("global_gray_hist_min", 0.0),
+            global_gray_hist_var=frame_b_dict.get("global_gray_hist_var", 0.0),
+            global_gray_hist_std=frame_b_dict.get("global_gray_hist_std", 0.0),
+            
+            grid_rgb_hist_mean=frame_b_dict.get("grid_rgb_hist_mean", 0.0),
+            grid_rgb_hist_max=frame_b_dict.get("grid_rgb_hist_max", 0.0),
+            grid_rgb_hist_min=frame_b_dict.get("grid_rgb_hist_min", 0.0),
+            grid_rgb_hist_var=frame_b_dict.get("grid_rgb_hist_var", 0.0),
+            grid_rgb_hist_std=frame_b_dict.get("grid_rgb_hist_std", 0.0),
+            
+            grid_gray_hist_mean=frame_b_dict.get("grid_gray_hist_mean", 0.0),
+            grid_gray_hist_max=frame_b_dict.get("grid_gray_hist_max", 0.0),
+            grid_gray_hist_min=frame_b_dict.get("grid_gray_hist_min", 0.0),
+            grid_gray_hist_var=frame_b_dict.get("grid_gray_hist_var", 0.0),
+            grid_gray_hist_std=frame_b_dict.get("grid_gray_hist_std", 0.0),
+            
+            grid_edge_mean=frame_b_dict.get("grid_edge_mean", 0.0),
+            grid_edge_max=frame_b_dict.get("grid_edge_max", 0.0),
+            grid_edge_min=frame_b_dict.get("grid_edge_min", 0.0),
+            grid_edge_var=frame_b_dict.get("grid_edge_var", 0.0),
+            grid_edge_std=frame_b_dict.get("grid_edge_std", 0.0)
         )
         
         # Compile Pairwise typed models
@@ -630,7 +835,7 @@ class FeatureValidator:
 
 class CSVExporter:
     @staticmethod
-    def export(frame_a_name: str, frame_b_name: str, fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig) -> str:
+    def export(frame_a_name: str, frame_b_name: str, fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig, ground_truth: int = 0) -> str:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         metadata = [
             frame_a_name,
@@ -645,7 +850,9 @@ class CSVExporter:
             config.hist_bins,
             config.hist_method,
             config.color_mode,
-            config.ssim_win_size
+            config.ssim_win_size,
+            json.dumps(asdict(config)).replace(",", ";"),  # Replace comma to prevent CSV formatting corruption
+            ground_truth
         ]
         
         # Create CSV layout: Metadata + FrameA + FrameB + Pairwise Differences
@@ -654,7 +861,118 @@ class CSVExporter:
         # Serialize list as a single comma-separated row
         return ",".join(str(val) for val in all_values)
 
+class MarkdownExporter:
+    @staticmethod
+    def export(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures, config: PairwiseFeatureConfig) -> str:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        explanation = rule_based_explain(fa, fb, pf)
+        
+        report = f"""# Pairwise Feature Vector Experiment Report
+**Date Generated:** {timestamp}
+**Engine Version:** 2.0.0
+**Schema Version:** 2.0.0
 
+---
+
+## 1. Experiment Hyperparameters Configuration
+*   **Histogram Bins:** {config.hist_bins}
+*   **Histogram Comparison Metric:** {config.hist_method}
+*   **Color Mode:** {config.color_mode}
+*   **Histogram Grid Size:** {config.hist_grid_size}x{config.hist_grid_size}
+*   **Gaussian Blur Pre-filter:** {config.edge_blur}
+*   **Canny Thresholds (Low/High):** {config.canny_low} / {config.canny_high}
+*   **Edge Grid Size:** {config.edge_grid_size}x{config.edge_grid_size}
+*   **SSIM Window Size:** {config.ssim_win_size}
+*   **SSIM Gaussian Weights:** {config.ssim_gaussian}
+
+---
+
+## 2. Extraction Results Summary
+
+### Frame Features (Scalar Metrics)
+| Metric | Frame A | Frame B |
+| :--- | :--- | :--- |
+| Brightness | {fa.brightness:.4f} | {fb.brightness:.4f} |
+| Contrast | {fa.contrast:.4f} | {fb.contrast:.4f} |
+| Shannon Entropy | {fa.entropy:.4f} | {fb.entropy:.4f} |
+| Edge Density | {fa.edge_density:.4f} | {fb.edge_density:.4f} |
+| Text Occupancy | {fa.text_occupancy:.4f} | {fb.text_occupancy:.4f} |
+
+### Comparative Metrics (Pairwise Differences)
+| Metric | Computed Value |
+| :--- | :--- |
+| Global RGB Histogram Distance | {pf.rgb_hist_dist_global:.4f} |
+| Global Gray Histogram Distance | {pf.gray_hist_dist_global:.4f} |
+| Grid RGB Hist Distance (Mean) | {pf.rgb_hist_grid_mean:.4f} |
+| Grid RGB Hist Distance (Max) | {pf.rgb_hist_grid_max:.4f} |
+| Grid RGB Hist Distance (Min) | {pf.rgb_hist_grid_min:.4f} |
+| Grid RGB Hist Distance (Var) | {pf.rgb_hist_grid_var:.4f} |
+| Grid Gray Hist Distance (Mean) | {pf.gray_hist_grid_mean:.4f} |
+| Grid Gray Hist Distance (Max) | {pf.gray_hist_grid_max:.4f} |
+| Grid Gray Hist Distance (Min) | {pf.gray_hist_grid_min:.4f} |
+| Grid Gray Hist Distance (Var) | {pf.gray_hist_grid_var:.4f} |
+| Whole Image Edge Density Diff | {pf.whole_edge_density_diff:.4f} |
+| Grid Edge Difference (Mean) | {pf.grid_edge_mean_diff:.4f} |
+| Grid Edge Difference (Max) | {pf.grid_edge_max_diff:.4f} |
+| Grid Edge Difference (Min) | {pf.grid_edge_min_diff:.4f} |
+| Grid Edge Difference (Var) | {pf.grid_edge_var_diff:.4f} |
+| SSIM (Mean Similarity) | {pf.ssim_mean:.4f} |
+| SSIM (Minimum similarity) | {pf.ssim_min:.4f} |
+| SSIM (Variance) | {pf.ssim_variance:.4f} |
+| Mean Absolute Difference (MAD) | {pf.mean_absolute_difference:.4f} |
+| Text Occupancy Difference | {pf.text_occupancy_diff:.4f} |
+
+---
+
+## 3. Structural Modification Analysis
+{explanation}
+"""
+        return report
+
+# ==========================================
+# 7. Rule-Based Interpretation
+# ==========================================
+
+def rule_based_explain(fa: FrameFeatures, fb: FrameFeatures, pf: PairwiseFeatures) -> str:
+    lines = []
+    
+    # 1. SSIM structural assessment
+    if pf.ssim_mean > 0.98:
+        lines.append("*   **SSIM:** Very high structural similarity (layout identical, tiny changes).")
+    elif pf.ssim_mean > 0.90:
+        lines.append("*   **SSIM:** High structural similarity (same slide template, minor additions).")
+    else:
+        lines.append("*   **SSIM:** Low similarity. Substantial layout structure updates or slide transition.")
+
+    # 2. Histogram differences
+    if pf.gray_hist_dist_global < 0.05:
+        lines.append("*   **Histogram:** Very small appearance difference.")
+    elif pf.gray_hist_dist_global < 0.15:
+        lines.append("*   **Histogram:** Moderate appearance updates.")
+    else:
+        lines.append("*   **Histogram:** Large appearance shifts (colors or layout elements swapped).")
+        
+    # 3. Grid Edge modifications
+    if pf.grid_edge_max_diff > 0.08:
+        lines.append("*   **Edge:** Localized structural change detected (e.g. annotations drawn or bullet points added).")
+    else:
+        lines.append("*   **Edge:** Uniform edge difference across grids.")
+        
+    # 4. Text occupancy additions
+    if pf.text_occupancy_diff > 0.03:
+        lines.append("*   **Text Occupancy:** Text coverage changed. New text blocks likely appeared.")
+        
+    # 5. Overall Synthesis
+    if pf.ssim_mean > 0.95 and pf.text_occupancy_diff > 0.02 and pf.grid_edge_max_diff > 0.05:
+        verdict = "**Overall Verdict:** Likely answer reveal or new text insertion on the same slide structure."
+    elif pf.ssim_mean < 0.88:
+        verdict = "**Overall Verdict:** Slide transition. Completely new layout template detected."
+    elif pf.ssim_mean > 0.98 and pf.mean_absolute_difference < 1.0:
+        verdict = "**Overall Verdict:** Virtually identical frames (static slide)."
+    else:
+        verdict = "**Overall Verdict:** Slide modification with moderate annotations or layout adjustments."
+        
+    return "\n".join(lines) + "\n\n" + verdict
 
 # ==========================================
 # 8. Decoupled Visualizers
@@ -728,55 +1046,6 @@ def visualize_grid_heatmap(img_shape, cells_diff, grid_size):
         cv2.putText(heatmap, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
         
     return heatmap
-
-def visualize_feature_overview(pf: PairwiseFeatures):
-    """Plots comparative features in a non-normalized Matplotlib bar chart."""
-    fig, ax = plt.subplots(figsize=(6, 3), facecolor="#1e1e2f")
-    ax.set_facecolor("#1e1e2f")
-    
-    metrics = [
-        "Global RGB Hist Dist",
-        "Global Gray Hist Dist",
-        "Whole Edge Diff",
-        "SSIM Similarity",
-        "Text Occupancy Diff"
-    ]
-    
-    values = [
-        pf.rgb_hist_dist_global,
-        pf.gray_hist_dist_global,
-        pf.whole_edge_density_diff,
-        pf.ssim_mean,
-        pf.text_occupancy_diff
-    ]
-    
-    colors = ["#a78bfa", "#6366f1", "#10b981", "#3b82f6", "#f59e0b"]
-    
-    bars = ax.barh(metrics, values, color=colors, height=0.5, edgecolor="#2e2e4f")
-    
-    ax.tick_params(colors="#9ca3af", labelsize=9)
-    ax.xaxis.label.set_color("#9ca3af")
-    ax.yaxis.label.set_color("#9ca3af")
-    ax.title.set_color("#a78bfa")
-    ax.grid(True, color="#2e2e4f", linestyle="--", alpha=0.5)
-    ax.set_title("Pairwise Feature Comparison (Raw Values)", fontsize=10, fontweight="bold")
-    
-    # Write values inside/beside bars
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(
-            width + 0.02,
-            bar.get_y() + bar.get_height() / 2,
-            f"{width:.4f}",
-            ha="left",
-            va="center",
-            color="#f3f4f6",
-            fontsize=8,
-            fontweight="bold"
-        )
-        
-    plt.tight_layout()
-    return fig
 
 # ==========================================
 # 9. Main Laboratory Tab Coordinator UI
@@ -882,16 +1151,10 @@ def render_pairwise_feature_lab():
             ssim_vis = ((art.ssim_map + 1.0) * 127.5).astype(np.uint8)
             st.image(ssim_vis, caption="SSIM Similarity Map (Bright = High Similarity)", use_container_width=True)
             
-    # Heatmaps and Summaries
-    col_lh, col_rh = st.columns(2)
-    with col_lh:
-        st.markdown("#### Spatial Difference Heatmap")
-        heatmap = visualize_grid_heatmap(img_a_orig.shape, art.edge_grid_scores, config.edge_grid_size)
-        st.image(heatmap, caption="Cell Edge Density Grid Differences Heatmap", use_container_width=True)
-    with col_rh:
-        fig = visualize_feature_overview(pf)
-        st.pyplot(fig)
-        plt.close(fig)
+    # Spatial difference heatmap (No comparative horizontal bar plot, as requested)
+    st.markdown("#### Spatial Difference Heatmap")
+    heatmap = visualize_grid_heatmap(img_a_orig.shape, art.edge_grid_scores, config.edge_grid_size)
+    st.image(heatmap, caption="Cell Edge Density Grid Differences Heatmap", use_container_width=True)
         
     # --- FEATURES TABLE ---
     st.markdown("---")
@@ -899,16 +1162,37 @@ def render_pairwise_feature_lab():
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        st.markdown("**Individual Frame Scalar Features**")
+        st.markdown("**Individual Frame Scalar & Raw Features (Section A)**")
         df_frame = pd.DataFrame({
-            "Feature Metric": ["Brightness (Mean)", "Contrast (Std)", "Shannon Entropy", "Edge Density", "Text Occupancy"],
-            "Frame A": [f"{fa.brightness:.4f}", f"{fa.contrast:.4f}", f"{fa.entropy:.4f}", f"{fa.edge_density:.4f}", f"{fa.text_occupancy:.4f}"],
-            "Frame B": [f"{fb.brightness:.4f}", f"{fb.contrast:.4f}", f"{fb.entropy:.4f}", f"{fb.edge_density:.4f}", f"{fb.text_occupancy:.4f}"]
+            "Feature Metric": [
+                "Brightness (Mean)", "Contrast (Std)", "Shannon Entropy", "Edge Density", "Text Occupancy",
+                "Global RGB Histogram (Mean / Max / Min / Var / Std)",
+                "Global Gray Histogram (Mean / Max / Min / Var / Std)",
+                "Grid RGB Histogram (Mean / Max / Min / Var / Std)",
+                "Grid Gray Histogram (Mean / Max / Min / Var / Std)",
+                "Grid Edge Density (Mean / Max / Min / Var / Std)"
+            ],
+            "Frame A": [
+                f"{fa.brightness:.4f}", f"{fa.contrast:.4f}", f"{fa.entropy:.4f}", f"{fa.edge_density:.4f}", f"{fa.text_occupancy:.4f}",
+                f"{fa.global_rgb_hist_mean:.4f} / {fa.global_rgb_hist_max:.4f} / {fa.global_rgb_hist_min:.4f} / {fa.global_rgb_hist_var:.4f} / {fa.global_rgb_hist_std:.4f}",
+                f"{fa.global_gray_hist_mean:.4f} / {fa.global_gray_hist_max:.4f} / {fa.global_gray_hist_min:.4f} / {fa.global_gray_hist_var:.4f} / {fa.global_gray_hist_std:.4f}",
+                f"{fa.grid_rgb_hist_mean:.4f} / {fa.grid_rgb_hist_max:.4f} / {fa.grid_rgb_hist_min:.4f} / {fa.grid_rgb_hist_var:.4f} / {fa.grid_rgb_hist_std:.4f}",
+                f"{fa.grid_gray_hist_mean:.4f} / {fa.grid_gray_hist_max:.4f} / {fa.grid_gray_hist_min:.4f} / {fa.grid_gray_hist_var:.4f} / {fa.grid_gray_hist_std:.4f}",
+                f"{fa.grid_edge_mean:.4f} / {fa.grid_edge_max:.4f} / {fa.grid_edge_min:.4f} / {fa.grid_edge_var:.4f} / {fa.grid_edge_std:.4f}"
+            ],
+            "Frame B": [
+                f"{fb.brightness:.4f}", f"{fb.contrast:.4f}", f"{fb.entropy:.4f}", f"{fb.edge_density:.4f}", f"{fb.text_occupancy:.4f}",
+                f"{fb.global_rgb_hist_mean:.4f} / {fb.global_rgb_hist_max:.4f} / {fb.global_rgb_hist_min:.4f} / {fb.global_rgb_hist_var:.4f} / {fb.global_rgb_hist_std:.4f}",
+                f"{fb.global_gray_hist_mean:.4f} / {fb.global_gray_hist_max:.4f} / {fb.global_gray_hist_min:.4f} / {fb.global_gray_hist_var:.4f} / {fb.global_gray_hist_std:.4f}",
+                f"{fb.grid_rgb_hist_mean:.4f} / {fb.grid_rgb_hist_max:.4f} / {fb.grid_rgb_hist_min:.4f} / {fb.grid_rgb_hist_var:.4f} / {fb.grid_rgb_hist_std:.4f}",
+                f"{fb.grid_gray_hist_mean:.4f} / {fb.grid_gray_hist_max:.4f} / {fb.grid_gray_hist_min:.4f} / {fb.grid_gray_hist_var:.4f} / {fb.grid_gray_hist_std:.4f}",
+                f"{fb.grid_edge_mean:.4f} / {fb.grid_edge_max:.4f} / {fb.grid_edge_min:.4f} / {fb.grid_edge_var:.4f} / {fb.grid_edge_std:.4f}"
+            ]
         })
         st.dataframe(df_frame, use_container_width=True, hide_index=True)
         
     with col_t2:
-        st.markdown("**Comparative Pairwise Metric Statistics**")
+        st.markdown("**Comparative Pairwise Metric Statistics (Section B)**")
         df_pairwise = pd.DataFrame({
             "Pairwise Feature Metric": [
                 "Global RGB Histogram Distance", "Global Gray Histogram Distance",
@@ -936,25 +1220,40 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    st.markdown("#### 💾 CSV Export Preview")
-    # Prepare CSV exporter and inject actual frame width/height
-    raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
-    csv_parts = raw_csv_row.split(",")
-    # Inject width and height
-    h_orig, w_orig = img_a_orig.shape[:2]
-    csv_parts[6] = str(w_orig)
-    csv_parts[7] = str(h_orig)
-    final_csv_row = ",".join(csv_parts)
-    
-    st.code(final_csv_row, language="text")
-    
-    st.download_button(
-        label="💾 Download Pairwise Vector CSV (Headerless)",
-        data=final_csv_row,
-        file_name="pairwise_vector.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
+    col_rep, col_csv = st.columns(2)
+    with col_rep:
+        st.markdown("#### 🔬 Metric Interpretation & Reports")
+        st.write(rule_based_explain(fa, fb, pf))
+        
+        md_text = MarkdownExporter.export(fa, fb, pf, config)
+        st.download_button(
+            label="📄 Generate Experiment Report (.md)",
+            data=md_text,
+            file_name=f"experiment_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
+        
+    with col_csv:
+        st.markdown("#### 💾 CSV Export Preview")
+        # Prepare CSV exporter and inject actual frame width/height
+        raw_csv_row = CSVExporter.export(file_a.name, file_b.name, fa, fb, pf, config)
+        csv_parts = raw_csv_row.split(",")
+        # Inject width and height
+        h_orig, w_orig = img_a_orig.shape[:2]
+        csv_parts[6] = str(w_orig)
+        csv_parts[7] = str(h_orig)
+        final_csv_row = ",".join(csv_parts)
+        
+        st.code(final_csv_row, language="text")
+        
+        st.download_button(
+            label="💾 Download Pairwise Vector CSV (Headerless)",
+            data=final_csv_row,
+            file_name="pairwise_vector.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
         
     # --- DEBUG CONSOLE LOGS ---
     st.markdown("---")
