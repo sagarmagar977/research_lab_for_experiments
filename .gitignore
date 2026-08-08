@@ -12,4 +12,5 @@ sessions/
 experiment_report_*.md
 pairwise_vector.csv
 *.mp4
-*.avi
+generated_datasets/
+dataset_sessions/
