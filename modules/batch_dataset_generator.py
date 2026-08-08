@@ -71,10 +71,131 @@ def compile_feature_manifest(headers):
         }
     return manifest
 
+def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: str, headers: list[str]):
+    # Display dataset preview
+    st.markdown("#### Dataset Preview (First 5 Rows)")
+    st.dataframe(df.head(), use_container_width=True)
+    
+    # Checkbox for expandable full preview
+    show_full = st.checkbox("🔍 View Full Dataset Preview (All Rows & Columns)", key=f"chk_full_dataset_{crop_subdir}")
+    if show_full:
+        st.dataframe(df, height=350, use_container_width=True)
+        
+    # 2. Local File System Downloads Folder exporter (Creating Downloads/downloads/dataset_export_<subdir>...)
+    st.markdown("---")
+    st.markdown("#### 📂 Local Downloads Directory Export")
+    st.write("Export all generated files to your system `Downloads` folder under the decoupled architecture.")
+    
+    export_btn = st.button("💾 Export all files to Downloads/downloads/dataset_export/", use_container_width=True, type="secondary", key=f"btn_dl_export_{crop_subdir}")
+    if export_btn:
+        try:
+            downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+            dataset_root = os.path.join(downloads_dir, "downloads", f"dataset_export_{crop_subdir}")
+            
+            # Create decoupled subdirectories
+            datasets_dir = os.path.join(dataset_root, "datasets")
+            metadata_dir = os.path.join(dataset_root, "metadata")
+            
+            os.makedirs(datasets_dir, exist_ok=True)
+            os.makedirs(metadata_dir, exist_ok=True)
+            
+            # Write ML CSV
+            df.to_csv(os.path.join(datasets_dir, f"candidate_frame_dataset_{crop_subdir}.csv"), index=False)
+            
+            # Write Metadata JSON
+            with open(os.path.join(metadata_dir, f"experiment_{crop_subdir}.json"), "w") as f:
+                json.dump(metadata_json, f, indent=4)
+                
+            # Write Feature Manifest JSON
+            manifest = compile_feature_manifest(headers)
+            with open(os.path.join(metadata_dir, "feature_manifest.json"), "w") as f:
+                json.dump(manifest, f, indent=4)
+                
+            st.success(f"Successfully exported all files into `{os.path.abspath(dataset_root)}` folder structure!")
+        except Exception as ex:
+            st.error(f"Failed to export files to downloads folder: {str(ex)}")
+            
+    # 3. Individual browser download triggers for standard environment compatibility
+    st.markdown("---")
+    st.markdown("#### 📥 Standard Browser Downloads")
+    
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        csv_data = df.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Dataset CSV",
+            data=csv_data,
+            file_name=f"candidate_frame_dataset_{crop_subdir}.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key=f"btn_csv_dl_{crop_subdir}"
+        )
+    with col_dl2:
+        json_data = json.dumps(metadata_json, indent=4)
+        st.download_button(
+            label="📥 Download Metadata JSON",
+            data=json_data,
+            file_name=f"experiment_{crop_subdir}.json",
+            mime="application/json",
+            use_container_width=True,
+            key=f"btn_json_dl_{crop_subdir}"
+        )
+
 def render_batch_dataset_generator():
     st.markdown("### 📦 Batch Dataset Generator Tool")
     st.write("Extract pairwise and individual features chronologically across an entire cropped crop session to generate a consolidated ML training dataset.")
     
+    # Mode selector
+    action_mode = st.radio("Choose Action:", ["🚀 Generate New Dataset", "📂 Browse Saved Dataset Sessions"], horizontal=True, key="dataset_action_mode")
+    
+    if action_mode == "📂 Browse Saved Dataset Sessions":
+        root_datasets_dir = "generated_datasets"
+        if not os.path.exists(root_datasets_dir) or not os.path.isdir(root_datasets_dir):
+            st.info("No saved dataset sessions found. Run a batch generation first.")
+            return
+            
+        saved_dirs = sorted([d for d in os.listdir(root_datasets_dir) if os.path.isdir(os.path.join(root_datasets_dir, d)) and d.startswith("session_")])
+        if not saved_dirs:
+            st.info("No saved dataset sessions found. Run a batch generation first.")
+            return
+            
+        selected_dir = st.selectbox("Select Saved Session to View", saved_dirs, key="select_past_session")
+        session_path = os.path.join(root_datasets_dir, selected_dir)
+        
+        csv_sub = os.path.join(session_path, "datasets")
+        meta_sub = os.path.join(session_path, "metadata")
+        
+        if not os.path.exists(csv_sub) or not os.path.exists(meta_sub):
+            st.error("Invalid session folder structure (missing datasets or metadata subfolders).")
+            return
+            
+        csv_files = [f for f in os.listdir(csv_sub) if f.endswith(".csv")]
+        meta_files = [f for f in os.listdir(meta_sub) if f.endswith(".json") and not f.endswith("feature_manifest.json")]
+        
+        if not csv_files or not meta_files:
+            st.error("No CSV dataset or metadata files found in this session.")
+            return
+            
+        csv_filepath = os.path.join(csv_sub, csv_files[0])
+        meta_filepath = os.path.join(meta_sub, meta_files[0])
+        
+        try:
+            df = pd.read_csv(csv_filepath)
+            with open(meta_filepath, "r") as f:
+                metadata_json = json.load(f)
+                
+            crop_subdir = selected_dir.replace("session_", "")
+            
+            st.success(f"Successfully loaded past session: `{selected_dir}`")
+            
+            headers = CSVExporter.get_headers() + ["GroundTruth"]
+            render_dataset_results(df, metadata_json, crop_subdir, headers)
+            
+        except Exception as e:
+            st.error(f"Error loading session: {str(e)}")
+            
+        return
+
     sessions_root = "sessions"
     if not os.path.exists(sessions_root) or not os.path.isdir(sessions_root):
         st.info("No active crop sessions found yet. Please create a crop session inside the **Batch Crop Manager** tab first.")
@@ -239,15 +360,6 @@ def render_batch_dataset_generator():
         # Create DataFrame
         df = pd.DataFrame(csv_rows, columns=headers)
         
-        # Display dataset preview
-        st.markdown("#### Dataset Preview (First 5 Rows)")
-        st.dataframe(df.head(), use_container_width=True)
-        
-        # Checkbox for expandable full preview
-        show_full = st.checkbox("🔍 View Full Dataset Preview (All Rows & Columns)", key="chk_full_dataset")
-        if show_full:
-            st.dataframe(df, height=350, use_container_width=True)
-            
         # 1. Save in the structured generated_datasets/ session folder in root
         root_session_dir = os.path.join("generated_datasets", f"session_{crop_subdir}")
         root_datasets_dir = os.path.join(root_session_dir, "datasets")
@@ -268,59 +380,5 @@ def render_batch_dataset_generator():
             
         st.success(f"Successfully saved all session artifacts to workspace path: `{os.path.abspath(root_session_dir)}`")
         
-        # 2. Local File System Downloads Folder exporter (Creating Downloads/downloads/dataset_export_<subdir>...)
-        st.markdown("---")
-        st.markdown("#### 📂 Local Downloads Directory Export")
-        st.write("Export all generated files to your system `Downloads` folder under the decoupled architecture.")
-        
-        export_btn = st.button("💾 Export all files to Downloads/downloads/dataset_export/", use_container_width=True, type="secondary")
-        if export_btn:
-            try:
-                downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-                dataset_root = os.path.join(downloads_dir, "downloads", f"dataset_export_{crop_subdir}")
-                
-                # Create decoupled subdirectories
-                datasets_dir = os.path.join(dataset_root, "datasets")
-                metadata_dir = os.path.join(dataset_root, "metadata")
-                
-                os.makedirs(datasets_dir, exist_ok=True)
-                os.makedirs(metadata_dir, exist_ok=True)
-                
-                # Write ML CSV
-                df.to_csv(os.path.join(datasets_dir, f"candidate_frame_dataset_{crop_subdir}.csv"), index=False)
-                
-                # Write Metadata JSON
-                with open(os.path.join(metadata_dir, f"experiment_{crop_subdir}.json"), "w") as f:
-                    json.dump(metadata_json, f, indent=4)
-                    
-                # Write Feature Manifest JSON
-                with open(os.path.join(metadata_dir, "feature_manifest.json"), "w") as f:
-                    json.dump(manifest, f, indent=4)
-                    
-                st.success(f"Successfully exported all files into `{os.path.abspath(dataset_root)}` folder structure!")
-            except Exception as ex:
-                st.error(f"Failed to export files to downloads folder: {str(ex)}")
-                
-        # 3. Individual browser download triggers for standard environment compatibility
-        st.markdown("---")
-        st.markdown("#### 📥 Standard Browser Downloads")
-        
-        col_dl1, col_dl2 = st.columns(2)
-        with col_dl1:
-            csv_data = df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download Dataset CSV",
-                data=csv_data,
-                file_name=output_filename,
-                mime="text/csv",
-                use_container_width=True
-            )
-        with col_dl2:
-            json_data = json.dumps(metadata_json, indent=4)
-            st.download_button(
-                label="📥 Download Metadata JSON",
-                data=json_data,
-                file_name=metadata_filename,
-                mime="application/json",
-                use_container_width=True
-            )
+        # Render the results panel
+        render_dataset_results(df, metadata_json, crop_subdir, headers)
