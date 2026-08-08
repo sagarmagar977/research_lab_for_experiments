@@ -79,7 +79,7 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
     # Checkbox for expandable full preview
     show_full = st.checkbox("🔍 View Full Dataset Preview (All Rows & Columns)", key=f"chk_full_dataset_{crop_subdir}")
     if show_full:
-        st.dataframe(df, height=350, use_container_width=True)
+        st.dataframe(df, use_container_width=True)
         
     # 2. Local File System Downloads Folder exporter (Creating Downloads/downloads/dataset_export_<subdir>...)
     st.markdown("---")
