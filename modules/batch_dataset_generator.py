@@ -81,6 +81,41 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
     if show_full:
         st.dataframe(df, use_container_width=True)
         
+    # Dataset Profiling Expandable Dashboard
+    st.markdown("---")
+    with st.expander("📊 Dataset Profiling & Summary Statistics", expanded=False):
+        st.write("Overview of the compiled machine learning dataset quality and descriptive metrics.")
+        
+        # 1. Basic Metrics
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            st.metric("Total Rows (Pairs)", f"{df.shape[0]:,}")
+        with col_m2:
+            st.metric("Total Columns (Features)", f"{df.shape[1]:,}")
+        with col_m3:
+            st.metric("Duplicate Rows", f"{df.duplicated().sum():,}")
+        with col_m4:
+            st.metric("Missing Values", f"{df.isnull().sum().sum():,}")
+            
+        # 2. Descriptive Statistics (df.describe)
+        st.markdown("##### 📈 Descriptive Statistics Summary (`df.describe()`)")
+        st.dataframe(df.describe(), use_container_width=True)
+        
+        # 3. Column Data Types & Non-Null Counts (df.info())
+        st.markdown("##### 📋 Column Information (`df.info()`)")
+        import io
+        buffer = io.StringIO()
+        df.info(buf=buffer)
+        info_str = buffer.getvalue()
+        st.code(info_str, language="text")
+        
+        # 4. Detailed Null Summary (if any exist)
+        null_counts = df.isnull().sum()
+        if null_counts.sum() > 0:
+            st.markdown("##### ⚠️ Missing Values Per Column")
+            null_df = null_counts[null_counts > 0].to_frame("Missing Count")
+            st.dataframe(null_df, use_container_width=True)
+        
     # 2. Local File System Downloads Folder exporter (Creating Downloads/downloads/dataset_export_<subdir>...)
     st.markdown("---")
     st.markdown("#### 📂 Local Downloads Directory Export")
