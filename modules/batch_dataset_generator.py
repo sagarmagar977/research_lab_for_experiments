@@ -168,7 +168,7 @@ def render_batch_dataset_generator():
                 fa, fb, pf, art, logs_ext = extractor.extract(img_a, img_b)
                 
                 # Render 119 features CSV row and append ground truth label
-                raw_csv = CSVExporter.export(fa, fb, pf)
+                raw_csv = CSVExporter.export(fa, fb, pf, include_header=False)
                 csv_parts = [float(val) for val in raw_csv.split(",")]
                 csv_parts.append(int(ground_truth))
                 
