@@ -14,3 +14,6 @@ pairwise_vector.csv
 *.mp4
 generated_datasets/
 dataset_sessions/
+agent.md
+user_settings.json
+*.csv
