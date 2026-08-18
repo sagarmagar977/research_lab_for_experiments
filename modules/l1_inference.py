@@ -396,61 +396,59 @@ def render_l1_inference():
         # Interactive Galleries columns
         st.markdown("#### 🖼️ Results Gallery View")
         
-        col_all, col_selected, col_identical = st.columns(3)
+        # Initialize active tab in session state if not present
+        if "l1_gallery_tab" not in st.session_state:
+            st.session_state["l1_gallery_tab"] = "All Uploaded"
+            
+        col_b1, col_b2, col_b3 = st.columns(3)
+        with col_b1:
+            if st.button(f"📁 All Uploaded ({len(results)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "All Uploaded" else "secondary"):
+                st.session_state["l1_gallery_tab"] = "All Uploaded"
+                st.rerun()
+        with col_b2:
+            if st.button(f"🎯 Selected Candidates ({len(selected_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Selected Candidates" else "secondary"):
+                st.session_state["l1_gallery_tab"] = "Selected Candidates"
+                st.rerun()
+        with col_b3:
+            if st.button(f"🔁 Identical / Redundant ({len(identical_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Identical / Redundant" else "secondary"):
+                st.session_state["l1_gallery_tab"] = "Identical / Redundant"
+                st.rerun()
+                
+        # Slider to adjust grid columns (dynamic sizing)
+        grid_cols = st.slider("Adjust Grid Columns (Image Size)", min_value=2, max_value=6, value=4, step=1, key="l1_gallery_grid_cols")
         
-        with col_all:
-            st.markdown(f"##### 📁 All Uploaded ({len(results)})")
+        active_tab = st.session_state["l1_gallery_tab"]
+        if active_tab == "All Uploaded":
+            active_frames = results
+        elif active_tab == "Selected Candidates":
+            active_frames = selected_frames
+        else:
+            active_frames = identical_frames
+            
+        if not active_frames:
+            st.info(f"No frames in category: {active_tab}")
+        else:
             with st.container(border=True):
-                for idx, r in enumerate(results):
-                    is_keep = r["prediction"] == 1
-                    border_color = "#10b981" if is_keep else "#ef4444"
-                    bg_color = "rgba(16, 185, 129, 0.05)" if is_keep else "rgba(239, 68, 68, 0.05)"
-                    shadow = "0 0 8px rgba(16, 185, 129, 0.15)" if is_keep else "0 0 8px rgba(239, 68, 68, 0.15)"
-                    
-                    st.markdown(
-                        f'<div style="border: 2px solid {border_color}; border-radius: 12px; padding: 6px; background-color: {bg_color}; box-shadow: {shadow}; margin-bottom: 8px;">'
-                        f'<img src="data:image/jpeg;base64,{get_base64_from_filepath(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-                    label_class = "status-success" if is_keep else "status-warning"
-                    st.markdown(f"**{r['frame_idx']}. {r['filename']}**")
-                    st.markdown(f'<span class="status-badge {label_class}">{r["type"]}</span>', unsafe_allow_html=True)
-                    st.markdown("---")
-                    
-        with col_selected:
-            st.markdown(f"##### 🎯 Selected Candidates ({len(selected_frames)})")
-            with st.container(border=True):
-                if not selected_frames:
-                    st.info("No candidate frames selected.")
-                else:
-                    for idx, r in enumerate(selected_frames):
-                        st.markdown(
-                            f'<div style="border: 2px solid #10b981; border-radius: 12px; padding: 6px; background-color: rgba(16, 185, 129, 0.05); box-shadow: 0 0 8px rgba(16, 185, 129, 0.15); margin-bottom: 8px;">'
-                            f'<img src="data:image/jpeg;base64,{get_base64_from_filepath(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
-                            f'</div>',
-                            unsafe_allow_html=True
-                        )
-                        st.markdown(f"**{r['frame_idx']}. {r['filename']}**")
-                        st.markdown(f'<span class="status-badge status-success">{r["type"]}</span>', unsafe_allow_html=True)
-                        st.markdown("---")
-                        
-        with col_identical:
-            st.markdown(f"##### 🔁 Identical / Redundant ({len(identical_frames)})")
-            with st.container(border=True):
-                if not identical_frames:
-                    st.info("No identical frames detected.")
-                else:
-                    for idx, r in enumerate(identical_frames):
-                        st.markdown(
-                            f'<div style="border: 2px solid #ef4444; border-radius: 12px; padding: 6px; background-color: rgba(239, 68, 68, 0.05); box-shadow: 0 0 8px rgba(239, 68, 68, 0.15); margin-bottom: 8px;">'
-                            f'<img src="data:image/jpeg;base64,{get_base64_from_filepath(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
-                            f'</div>',
-                            unsafe_allow_html=True
-                        )
-                        st.markdown(f"**{r['frame_idx']}. {r['filename']}**")
-                        st.markdown(f'<span class="status-badge status-warning">{r["type"]}</span>', unsafe_allow_html=True)
-                        st.markdown("---")
+                for idx in range(0, len(active_frames), grid_cols):
+                    row_frames = active_frames[idx : idx + grid_cols]
+                    cols = st.columns(grid_cols)
+                    for col_idx, r in enumerate(row_frames):
+                        with cols[col_idx]:
+                            is_keep = r["prediction"] == 1
+                            border_color = "#10b981" if is_keep else "#ef4444"
+                            bg_color = "rgba(16, 185, 129, 0.05)" if is_keep else "rgba(239, 68, 68, 0.05)"
+                            shadow = "0 0 8px rgba(16, 185, 129, 0.15)" if is_keep else "0 0 8px rgba(239, 68, 68, 0.15)"
+                            
+                            st.markdown(
+                                f'<div style="border: 2px solid {border_color}; border-radius: 12px; padding: 6px; background-color: {bg_color}; box-shadow: {shadow}; margin-bottom: 8px;">'
+                                f'<img src="data:image/jpeg;base64,{get_base64_from_filepath(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                            label_class = "status-success" if is_keep else "status-warning"
+                            st.markdown(f"**{r['frame_idx']}. {r['filename']}**")
+                            st.markdown(f'<span class="status-badge {label_class}">{r["type"]}</span>', unsafe_allow_html=True)
+                            st.markdown("---")
 
 def get_base64_from_filepath(path):
     """Utility helper to load file and encode to base64."""
