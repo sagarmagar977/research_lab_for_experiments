@@ -227,7 +227,7 @@ def render_l1_inference():
         results.append({
             "frame_idx": 1,
             "filename": first_frame_name,
-            "path": first_frame_path_str,
+            "path": os.path.join(selected_dir, first_frame_name),
             "prediction": 1,
             "type": "Keep (First Frame)"
         })
@@ -289,7 +289,7 @@ def render_l1_inference():
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": frame_b_path_str,
+                    "path": os.path.join(selected_dir, frame_b_name),
                     "prediction": 1,
                     "type": "Keep (Transition detected)"
                 })
@@ -298,7 +298,7 @@ def render_l1_inference():
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": frame_b_path_str,
+                    "path": os.path.join(identical_dir, frame_b_name),
                     "prediction": 0,
                     "type": "Discard (Redundant/Duplicate)"
                 })
