@@ -34,6 +34,23 @@ def create_download_zip(selected_dir, zip_filepath):
                 filepath = os.path.join(root, file)
                 zipf.write(filepath, arcname=file)
 
+def read_frame_image(frame_item):
+    if isinstance(frame_item, str):
+        return cv2.imread(frame_item)
+    else:
+        frame_item.seek(0)
+        file_bytes = np.asarray(bytearray(frame_item.read()), dtype=np.uint8)
+        return cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+def save_frame_to_dir(frame_item, target_dir, filename):
+    target_path = os.path.join(target_dir, filename)
+    if isinstance(frame_item, str):
+        shutil.copy2(frame_item, target_path)
+    else:
+        frame_item.seek(0)
+        with open(target_path, "wb") as f:
+            f.write(frame_item.getbuffer())
+
 def render_l1_inference():
     st.markdown("### 🧠 Level 1 Model Batch Inference")
     st.write("Run sequential pairwise inference using trained L1 classification models to automatically filter candidate slides and identify duplicate/redundant frames.")
@@ -144,32 +161,10 @@ def render_l1_inference():
             
         # Sort files by filename to ensure sequential order
         uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
+        image_paths = uploaded_files
         
-        # Setup temp directories under sessions
         session_out_dir = os.path.join("sessions", "l1_inference_temp")
-        temp_input_dir = os.path.join(session_out_dir, "input_frames")
-        
-        # Save uploaded files to temp inputs directory
-        if st.button("💾 Save Uploaded Frames & Prepare", use_container_width=True):
-            with st.spinner("Saving uploaded files..."):
-                clean_directory(temp_input_dir)
-                for f in uploaded_files:
-                    target_path = os.path.join(temp_input_dir, f.name)
-                    with open(target_path, "wb") as out_f:
-                        out_f.write(f.getbuffer())
-                st.success(f"Saved {len(uploaded_files)} frames in temp storage.")
-                st.rerun()
-                
-        if os.path.exists(temp_input_dir):
-            saved_files = sorted([f for f in os.listdir(temp_input_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
-            image_paths = [os.path.join(temp_input_dir, f) for f in saved_files]
-            if image_paths:
-                st.success(f"Ready to process **{len(image_paths)}** uploaded frames.")
-            else:
-                st.warning("Please click the 'Save Uploaded Frames' button first.")
-                return
-        else:
-            return
+        st.success(f"Ready to process **{len(image_paths)}** uploaded frames.")
 
     # --- 2. RUN INFERENCE PIPELINE ---
     run_inference_btn = st.button("🚀 Run L1 Batch Inference", type="primary", use_container_width=True)
@@ -219,9 +214,11 @@ def render_l1_inference():
         
         results = []
         # First frame is automatically selected (Keep = 1)
-        first_frame_path = image_paths[0]
-        first_frame_name = os.path.basename(first_frame_path)
-        shutil.copy2(first_frame_path, os.path.join(selected_dir, first_frame_name))
+        first_frame = image_paths[0]
+        first_frame_name = first_frame.name if not isinstance(first_frame, str) else os.path.basename(first_frame)
+        first_frame_path_str = first_frame.name if not isinstance(first_frame, str) else first_frame
+        
+        save_frame_to_dir(first_frame, selected_dir, first_frame_name)
         if input_source == "Select Existing Batch Crop Session":
             orig_frame_src = os.path.join("sessions", selected_session, "original_frames", first_frame_name)
             if os.path.exists(orig_frame_src):
@@ -230,7 +227,7 @@ def render_l1_inference():
         results.append({
             "frame_idx": 1,
             "filename": first_frame_name,
-            "path": first_frame_path,
+            "path": first_frame_path_str,
             "prediction": 1,
             "type": "Keep (First Frame)"
         })
@@ -242,17 +239,19 @@ def render_l1_inference():
         
         # Loop sequentially: pair (i, i+1)
         for i in range(len(image_paths) - 1):
-            frame_a_path = image_paths[i]
-            frame_b_path = image_paths[i+1]
-            frame_b_name = os.path.basename(frame_b_path)
+            frame_a = image_paths[i]
+            frame_b = image_paths[i+1]
+            frame_b_name = frame_b.name if not isinstance(frame_b, str) else os.path.basename(frame_b)
+            frame_b_path_str = frame_b.name if not isinstance(frame_b, str) else frame_b
+            frame_a_name = frame_a.name if not isinstance(frame_a, str) else os.path.basename(frame_a)
             
-            status_text.text(f"Processing transition {i+1}/{len(image_paths)-1}: {os.path.basename(frame_a_path)} ➔ {frame_b_name}...")
+            status_text.text(f"Processing transition {i+1}/{len(image_paths)-1}: {frame_a_name} ➔ {frame_b_name}...")
             
             # Read images
-            img_a = cv2.imread(frame_a_path)
-            img_b = cv2.imread(frame_b_path)
+            img_a = read_frame_image(frame_a)
+            img_b = read_frame_image(frame_b)
             if img_a is None or img_b is None:
-                st.warning(f"Skipping unreadable frame pair: {frame_a_path} or {frame_b_path}")
+                st.warning(f"Skipping unreadable frame pair: {frame_a_name} or {frame_b_name}")
                 continue
                 
             img_a = cv2.cvtColor(img_a, cv2.COLOR_BGR2RGB)
@@ -282,7 +281,7 @@ def render_l1_inference():
             
             # Assign prediction to the second frame (Frame B)
             if pred == 1:
-                shutil.copy2(frame_b_path, os.path.join(selected_dir, frame_b_name))
+                save_frame_to_dir(frame_b, selected_dir, frame_b_name)
                 if input_source == "Select Existing Batch Crop Session":
                     orig_frame_src = os.path.join("sessions", selected_session, "original_frames", frame_b_name)
                     if os.path.exists(orig_frame_src):
@@ -290,16 +289,16 @@ def render_l1_inference():
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": frame_b_path,
+                    "path": frame_b_path_str,
                     "prediction": 1,
                     "type": "Keep (Transition detected)"
                 })
             else:
-                shutil.copy2(frame_b_path, os.path.join(identical_dir, frame_b_name))
+                save_frame_to_dir(frame_b, identical_dir, frame_b_name)
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": frame_b_path,
+                    "path": frame_b_path_str,
                     "prediction": 0,
                     "type": "Discard (Redundant/Duplicate)"
                 })

@@ -11,3 +11,4 @@ gatherUsageStats = false
 [server]
 headless = true
 port = 8501
+maxUploadSize = 2048
