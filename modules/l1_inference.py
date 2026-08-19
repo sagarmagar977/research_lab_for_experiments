@@ -85,6 +85,17 @@ def render_l1_inference():
         
         st.sidebar.success(f"Loaded: **{model_name}**")
         
+        # Add dynamic classification threshold slider in the sidebar
+        # Default value is set to 0.70 (our optimized midpoint)
+        custom_threshold = st.sidebar.slider(
+            "Classification Threshold",
+            min_value=0.01,
+            max_value=0.99,
+            value=0.70,
+            step=0.01,
+            help="Probability score above which a frame is classified as a slide transition candidate."
+        )
+        
         # Display model metrics in sidebar
         if metrics:
             st.sidebar.markdown("**Model Performance Metrics:**")
@@ -276,8 +287,9 @@ def render_l1_inference():
             
             X_array = np.array([X_features])
             
-            # Run inference
-            pred = int(pipeline.predict(X_array)[0])
+            # Run inference using predict_proba and custom threshold
+            y_proba_val = float(pipeline.predict_proba(X_array)[0, 1])
+            pred = 1 if y_proba_val >= custom_threshold else 0
             
             # Assign prediction to the second frame (Frame B)
             if pred == 1:
