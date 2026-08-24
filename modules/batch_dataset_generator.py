@@ -396,7 +396,22 @@ def render_batch_dataset_generator():
         df = pd.DataFrame(csv_rows, columns=headers)
         
         # 1. Save in the structured generated_datasets/ session folder in root
-        root_session_dir = os.path.join("generated_datasets", f"session_{crop_subdir}")
+        base_dir_name = f"session_{selected_session}_{crop_subdir}"
+        root_session_dir = os.path.join("generated_datasets", base_dir_name)
+        
+        # Check for naming collisions and apply incremental suffix (_v1, _v2, ...)
+        if os.path.exists(root_session_dir):
+            version = 1
+            while True:
+                versioned_dir_name = f"{base_dir_name}_v{version}"
+                temp_dir = os.path.join("generated_datasets", versioned_dir_name)
+                if not os.path.exists(temp_dir):
+                    root_session_dir = temp_dir
+                    # Update crop_subdir for downstream file naming consistency
+                    crop_subdir = f"{crop_subdir}_v{version}"
+                    break
+                version += 1
+
         root_datasets_dir = os.path.join(root_session_dir, "datasets")
         root_metadata_dir = os.path.join(root_session_dir, "metadata")
         os.makedirs(root_datasets_dir, exist_ok=True)
@@ -416,4 +431,4 @@ def render_batch_dataset_generator():
         st.success(f"Successfully saved all session artifacts to workspace path: `{os.path.abspath(root_session_dir)}`")
         
         # Render the results panel
-        render_dataset_results(df, metadata_json, crop_subdir, headers)
+        render_dataset_results(df, metadata_json, f"{selected_session}_{crop_subdir}", headers)
