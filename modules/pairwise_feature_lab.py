@@ -702,7 +702,18 @@ class SSIMExtractor(BaseExtractor):
 class MorphologyExtractor(BaseExtractor):
     def get_text_occupancy_mask(self, img, threshold, kernel_size, iterations, min_area):
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV)
+        mean_val = np.mean(gray)
+        
+        if mean_val < 127:
+            # Dark background (black tablet / dark IDE): text is brighter than background
+            thresh_type = cv2.THRESH_BINARY
+            thresh_val = 255 - threshold if threshold < 128 else threshold
+        else:
+            # Light background (white paper / light slides): text is darker than background
+            thresh_type = cv2.THRESH_BINARY_INV
+            thresh_val = threshold
+
+        _, binary = cv2.threshold(gray, thresh_val, 255, thresh_type)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
         dilated = cv2.dilate(binary, kernel, iterations=iterations)
         
