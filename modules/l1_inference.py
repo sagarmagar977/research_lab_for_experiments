@@ -226,6 +226,7 @@ def render_l1_inference():
         extractor.register_extractor(MorphologyExtractor())
         
         results = []
+        transitions_cache = []
         # First frame is automatically selected (Keep = 1)
         first_frame = image_paths[0]
         first_frame_name = first_frame.name if not isinstance(first_frame, str) else os.path.basename(first_frame)
@@ -293,6 +294,14 @@ def render_l1_inference():
             y_proba_val = float(pipeline.predict_proba(X_array)[0, 1])
             pred = 1 if y_proba_val >= custom_threshold else 0
             
+            # Store raw transition prediction record for instant real-time threshold slider adjustments
+            transitions_cache.append({
+                "pair_idx": i + 2,
+                "frame_b": frame_b,
+                "frame_b_name": frame_b_name,
+                "y_proba": y_proba_val
+            })
+            
             # Assign prediction to the second frame (Frame B)
             if pred == 1:
                 save_frame_to_dir(frame_b, selected_dir, frame_b_name)
@@ -305,6 +314,7 @@ def render_l1_inference():
                     "filename": frame_b_name,
                     "path": os.path.join(selected_dir, frame_b_name),
                     "prediction": 1,
+                    "probability": y_proba_val,
                     "type": "Keep (Transition detected)"
                 })
             else:
@@ -314,6 +324,7 @@ def render_l1_inference():
                     "filename": frame_b_name,
                     "path": os.path.join(identical_dir, frame_b_name),
                     "prediction": 0,
+                    "probability": y_proba_val,
                     "type": "Discard (Redundant/Duplicate)"
                 })
                 
@@ -321,10 +332,95 @@ def render_l1_inference():
             
         status_text.text("Batch inference completed!")
         st.session_state["l1_results"] = results
+        st.session_state["l1_transitions_cache"] = transitions_cache
+        st.session_state["l1_first_frame_info"] = {
+            "first_frame": first_frame,
+            "first_frame_name": first_frame_name
+        }
         st.session_state["l1_out_dir"] = session_out_dir
         st.session_state["l1_input_source"] = input_source
+        st.session_state["l1_last_threshold"] = custom_threshold
         if input_source == "Select Existing Batch Crop Session":
             st.session_state["l1_selected_session"] = selected_session
+            
+    # --- 2.5 INSTANT THRESHOLD RE-FILTERING ON SLIDER MOVEMENT (0ms DELAY) ---
+    if "l1_transitions_cache" in st.session_state and "l1_results" in st.session_state:
+        # Check if threshold slider changed since last evaluation
+        last_thresh = st.session_state.get("l1_last_threshold", None)
+        if last_thresh is not None and abs(last_thresh - custom_threshold) > 1e-4:
+            st.session_state["l1_last_threshold"] = custom_threshold
+            
+            transitions_cache = st.session_state["l1_transitions_cache"]
+            out_dir = st.session_state["l1_out_dir"]
+            input_src = st.session_state.get("l1_input_source", "")
+            sel_sess = st.session_state.get("l1_selected_session", "")
+            first_info = st.session_state.get("l1_first_frame_info", {})
+            
+            selected_dir = os.path.join(out_dir, "selected_frames")
+            identical_dir = os.path.join(out_dir, "identical_frames")
+            orig_selected_dir = os.path.join(out_dir, "selected_original_frames")
+            
+            clean_directory(selected_dir)
+            clean_directory(identical_dir)
+            if input_src == "Select Existing Batch Crop Session":
+                clean_directory(orig_selected_dir)
+                
+            updated_results = []
+            
+            # Keep first frame as candidate
+            if first_info:
+                ff_frame = first_info["first_frame"]
+                ff_name = first_info["first_frame_name"]
+                save_frame_to_dir(ff_frame, selected_dir, ff_name)
+                if input_src == "Select Existing Batch Crop Session" and sel_sess:
+                    orig_src = os.path.join("sessions", sel_sess, "original_frames", ff_name)
+                    if os.path.exists(orig_src):
+                        shutil.copy2(orig_src, os.path.join(orig_selected_dir, ff_name))
+                updated_results.append({
+                    "frame_idx": 1,
+                    "filename": ff_name,
+                    "path": os.path.join(selected_dir, ff_name),
+                    "prediction": 1,
+                    "probability": 1.0,
+                    "type": "Keep (First Frame)"
+                })
+                
+            # Instant re-classification for all cached transition probabilities
+            for t_item in transitions_cache:
+                fb = t_item["frame_b"]
+                fb_name = t_item["frame_b_name"]
+                prob = t_item["y_proba"]
+                p_idx = t_item["pair_idx"]
+                
+                new_pred = 1 if prob >= custom_threshold else 0
+                
+                if new_pred == 1:
+                    save_frame_to_dir(fb, selected_dir, fb_name)
+                    if input_src == "Select Existing Batch Crop Session" and sel_sess:
+                        orig_src = os.path.join("sessions", sel_sess, "original_frames", fb_name)
+                        if os.path.exists(orig_src):
+                            shutil.copy2(orig_src, os.path.join(orig_selected_dir, fb_name))
+                    updated_results.append({
+                        "frame_idx": p_idx,
+                        "filename": fb_name,
+                        "path": os.path.join(selected_dir, fb_name),
+                        "prediction": 1,
+                        "probability": prob,
+                        "type": "Keep (Transition detected)"
+                    })
+                else:
+                    save_frame_to_dir(fb, identical_dir, fb_name)
+                    updated_results.append({
+                        "frame_idx": p_idx,
+                        "filename": fb_name,
+                        "path": os.path.join(identical_dir, fb_name),
+                        "prediction": 0,
+                        "probability": prob,
+                        "type": "Discard (Redundant/Duplicate)"
+                    })
+                    
+            st.session_state["l1_results"] = updated_results
+            st.toast(f"⚡ Instant Threshold Update: Applied T = {custom_threshold:.2f} (0ms delay)", icon="⚡")
         
     # --- 3. DISPLAY RESULTS GALLERIES ---
     if "l1_results" in st.session_state:
