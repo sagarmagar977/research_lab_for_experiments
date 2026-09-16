@@ -18,3 +18,4 @@ agent.md
 user_settings.json
 *.csv
 testing/
+.antigravity/

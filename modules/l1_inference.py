@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import zipfile
 import datetime
@@ -19,6 +20,18 @@ from modules.pairwise_feature_lab import (
     MorphologyExtractor,
     CSVExporter
 )
+from modules.image_cache import (
+    get_cached_thumbnail_b64,
+    trigger_background_session_prefetch,
+    get_cache_stats
+)
+
+import re
+
+def sanitize_session_name(name):
+    """Sanitizes folder/session string for cross-platform filesystem safety."""
+    clean = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', name.strip())
+    return clean if clean else f"session_l1_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 def clean_directory(dir_path):
     """Safely creates/cleans a directory on disk."""
@@ -61,18 +74,76 @@ def render_l1_inference():
         st.error(f"Models directory `{models_dir}` not found. Please ensure you have L1 trained models.")
         return
 
-    pkl_files = sorted([f for f in os.listdir(models_dir) if f.endswith(".pkl")])
+    # Sort models by modification timestamp descending (newest on top, oldest last)
+    pkl_files = [f for f in os.listdir(models_dir) if f.endswith(".pkl")]
+    pkl_files.sort(
+        key=lambda f: os.path.getmtime(os.path.join(models_dir, f)),
+        reverse=True
+    )
     if not pkl_files:
         st.error("No pickled models found in `L1_models` directory.")
         return
+
+    def format_model_label(filename):
+        try:
+            mtime = os.path.getmtime(os.path.join(models_dir, filename))
+            dt_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+            return f"{filename} ({dt_str})"
+        except Exception:
+            return filename
+
+    # --- Persistent Model Selection Helpers ---
+    def get_saved_l1_model():
+        settings_path = "user_settings.json"
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r") as f:
+                    data = json.load(f)
+                    return data.get("last_used_l1_model")
+            except Exception:
+                pass
+        return None
+
+    def save_last_used_l1_model(model_filename):
+        settings_path = "user_settings.json"
+        data = {}
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r") as f:
+                    data = json.load(f)
+            except Exception:
+                data = {}
+        if data.get("last_used_l1_model") != model_filename:
+            data["last_used_l1_model"] = model_filename
+            try:
+                with open(settings_path, "w") as f:
+                    json.dump(data, f, indent=4)
+            except Exception:
+                pass
+
+    saved_model = get_saved_l1_model()
+    default_model_idx = 0
+    if saved_model and saved_model in pkl_files:
+        default_model_idx = pkl_files.index(saved_model)
+
+    def on_model_selection_change():
+        current_sel = st.session_state.get("selected_l1_model")
+        if current_sel:
+            save_last_used_l1_model(current_sel)
 
     # --- Sidebar Configuration & Model Selection ---
     st.sidebar.markdown("<h4 style='color: #a78bfa; margin-top: 20px; margin-bottom: 0px;'>L1 Model Selection</h4>", unsafe_allow_html=True)
     selected_model_file = st.sidebar.selectbox(
         "Select Classification Model",
         pkl_files,
-        key="selected_l1_model"
+        index=default_model_idx,
+        format_func=format_model_label,
+        key="selected_l1_model",
+        on_change=on_model_selection_change
     )
+
+    if selected_model_file:
+        save_last_used_l1_model(selected_model_file)
 
     # Load selected model
     model_path = os.path.join(models_dir, selected_model_file)
@@ -110,17 +181,18 @@ def render_l1_inference():
         st.sidebar.error(f"Failed to load model: {str(e)}")
         return
 
-    # --- Input Source: Dual input method ---
+    # --- Input Source: Triple input method ---
     st.markdown("#### 📥 Select Input Source")
     input_source = st.radio(
         "Choose how to load frames for batch inference",
-        ["Select Existing Batch Crop Session", "Upload New Sequential Frames"],
+        ["Select Existing Batch Crop Session", "Upload New Sequential Frames", "Load from Local Folder Path"],
         horizontal=True
     )
 
     image_paths = []
-    session_crop_dir = ""
-    session_out_dir = ""
+    target_session_name = ""
+    target_engine = "PP-OCRv3"
+    save_mode = "Update Current Session in-place"
     
     if input_source == "Select Existing Batch Crop Session":
         sessions_root = "sessions"
@@ -137,14 +209,30 @@ def render_l1_inference():
         with col_s1:
             selected_session = st.selectbox("Select Session", session_dirs, key="l1_sess_cand")
         with col_s2:
-            selected_engine = st.radio("Select Crop Source Engine", ["PP-OCRv3", "PP-OCRv4"], horizontal=True, key="l1_eng_cand")
+            session_path = os.path.join(sessions_root, selected_session)
+            available_engines = []
+            if os.path.exists(os.path.join(session_path, "v3_crops")):
+                available_engines.append("PP-OCRv3")
+            if os.path.exists(os.path.join(session_path, "v4_crops")):
+                available_engines.append("PP-OCRv4")
+            if not available_engines:
+                available_engines = ["PP-OCRv3"]
+            selected_engine = st.radio("Select Crop Source Engine", available_engines, horizontal=True, key="l1_eng_cand")
             
-        session_path = os.path.join(sessions_root, selected_session)
+        save_mode = st.radio(
+            "Candidate Selector Session Target:",
+            ["Update Current Session in-place", "Branch into New Session (<session>_l1_curated)"],
+            horizontal=True,
+            key="l1_save_mode_choice"
+        )
+        if save_mode == "Branch into New Session (<session>_l1_curated)":
+            target_session_name = f"{selected_session}_l1_curated"
+        else:
+            target_session_name = selected_session
+            
+        target_engine = selected_engine
         crop_dir_name = "v3_crops" if selected_engine == "PP-OCRv3" else "v4_crops"
         session_crop_dir = os.path.join(session_path, crop_dir_name)
-        
-        # Define output directory inside the session for reproducibility
-        session_out_dir = os.path.join(session_path, f"l1_inference_{selected_model_file.replace('.pkl', '')}_{crop_dir_name}")
         
         if not os.path.exists(session_crop_dir) or not os.path.isdir(session_crop_dir):
             st.warning(f"No cropped images found for engine {selected_engine} in session `{selected_session}`.")
@@ -155,29 +243,65 @@ def render_l1_inference():
             st.warning("No crop frames found in this session.")
             return
             
-        # Map full paths
         image_paths = [os.path.join(session_crop_dir, f) for f in cropped_files]
-        st.success(f"Ready to process **{len(image_paths)}** frames from session: `{selected_session}` ({selected_engine})")
-        
-    else:
-        # Uploading new sequential frames
-        uploaded_files = st.file_uploader(
-            "Upload Sequential Frames (will be sorted alphabetically by filename)",
-            type=["jpg", "jpeg", "png"],
-            accept_multiple_files=True,
-            key="l1_upload_files"
-        )
-        
+        st.success(f"Ready to process **{len(image_paths)}** frames from session: `{selected_session}` ({selected_engine}) ➔ Target: `{target_session_name}`")
+
+    elif input_source == "Upload New Sequential Frames":
+        col_up1, col_up2 = st.columns([2, 1])
+        with col_up1:
+            uploaded_files = st.file_uploader(
+                "Upload Sequential Frames (will be sorted alphabetically by filename)",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key="l1_upload_files"
+            )
+        with col_up2:
+            default_upload_sess = f"session_upload_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            session_name_input = st.text_input("Session / Folder Name for Candidate Selector", value=default_upload_sess, key="l1_up_sess_name")
+            target_session_name = sanitize_session_name(session_name_input)
+            
+        target_engine = "PP-OCRv3"
         if not uploaded_files:
             st.info("Upload sequential frames to run inference.")
             return
             
-        # Sort files by filename to ensure sequential order
         uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
         image_paths = uploaded_files
+        st.success(f"Ready to process **{len(image_paths)}** uploaded frames ➔ Target Session: `{target_session_name}`")
+
+    else:
+        # Load from Local Folder Path
+        col_loc1, col_loc2 = st.columns([2, 1])
+        with col_loc1:
+            local_folder_path = st.text_input("Local Folder Path", placeholder="e.g. F:/thesis/frames or D:/my_video_crops", key="l1_local_path")
         
-        session_out_dir = os.path.join("sessions", "l1_inference_temp")
-        st.success(f"Ready to process **{len(image_paths)}** uploaded frames.")
+        target_engine = "PP-OCRv3"
+        if not local_folder_path or not os.path.isdir(local_folder_path):
+            st.info("Enter a valid existing local directory path containing image frames.")
+            return
+            
+        detected_files = sorted([f for f in os.listdir(local_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+        if not detected_files:
+            st.warning(f"No image files (.png, .jpg, .jpeg) found in `{local_folder_path}`.")
+            return
+            
+        folder_base_name = os.path.basename(os.path.normpath(local_folder_path))
+        with col_loc2:
+            session_name_input = st.text_input("Session / Folder Name for Candidate Selector", value=folder_base_name, key="l1_local_sess_name")
+            target_session_name = sanitize_session_name(session_name_input)
+            
+        image_paths = [os.path.join(local_folder_path, f) for f in detected_files]
+        st.success(f"Found **{len(image_paths)}** frames in local folder ➔ Target Session: `{target_session_name}`")
+
+    # Define target session structure
+    target_session_dir = os.path.join("sessions", target_session_name)
+    crop_sub_name = "v3_crops" if target_engine == "PP-OCRv3" else "v4_crops"
+    cand_sub_name = "v3_candidate_frames" if target_engine == "PP-OCRv3" else "v4_candidate_frames"
+    
+    target_crop_dir = os.path.join(target_session_dir, crop_sub_name)
+    target_cand_dir = os.path.join(target_session_dir, cand_sub_name)
+    target_orig_dir = os.path.join(target_session_dir, "original_frames")
+    target_identical_dir = os.path.join(target_session_dir, "identical_frames")
 
     # --- 2. RUN INFERENCE PIPELINE ---
     run_inference_btn = st.button("🚀 Run L1 Batch Inference", type="primary", use_container_width=True)
@@ -187,17 +311,31 @@ def render_l1_inference():
             st.error("Need at least 2 frames to perform sequential pairwise inference.")
             return
             
-        # Set up outputs directories
-        selected_dir = os.path.join(session_out_dir, "selected_frames")
-        identical_dir = os.path.join(session_out_dir, "identical_frames")
+        # Ensure session directory layout
+        os.makedirs(target_crop_dir, exist_ok=True)
+        os.makedirs(target_orig_dir, exist_ok=True)
+        clean_directory(target_cand_dir)
+        clean_directory(target_identical_dir)
         
-        clean_directory(selected_dir)
-        clean_directory(identical_dir)
-        
-        # Set up original selected frames output directory if existing session
-        orig_selected_dir = os.path.join(session_out_dir, "selected_original_frames")
-        if input_source == "Select Existing Batch Crop Session":
-            clean_directory(orig_selected_dir)
+        # Persist source frames if uploaded or local folder
+        if input_source in ("Upload New Sequential Frames", "Load from Local Folder Path"):
+            persisted_paths = []
+            for f_item in image_paths:
+                f_name = f_item.name if not isinstance(f_item, str) else os.path.basename(f_item)
+                save_frame_to_dir(f_item, target_crop_dir, f_name)
+                save_frame_to_dir(f_item, target_orig_dir, f_name)
+                persisted_paths.append(os.path.join(target_crop_dir, f_name))
+            image_paths = persisted_paths
+        elif input_source == "Select Existing Batch Crop Session" and save_mode == "Branch into New Session (<session>_l1_curated)":
+            for f_p in image_paths:
+                f_name = os.path.basename(f_p)
+                shutil.copy2(f_p, os.path.join(target_crop_dir, f_name))
+            src_orig = os.path.join(session_path, "original_frames")
+            if os.path.exists(src_orig):
+                for f in os.listdir(src_orig):
+                    s_file = os.path.join(src_orig, f)
+                    if os.path.isfile(s_file):
+                        shutil.copy2(s_file, os.path.join(target_orig_dir, f))
         
         # Build features config from st.session_state
         config = PairwiseFeatureConfig(
@@ -230,18 +368,13 @@ def render_l1_inference():
         # First frame is automatically selected (Keep = 1)
         first_frame = image_paths[0]
         first_frame_name = first_frame.name if not isinstance(first_frame, str) else os.path.basename(first_frame)
-        first_frame_path_str = first_frame.name if not isinstance(first_frame, str) else first_frame
         
-        save_frame_to_dir(first_frame, selected_dir, first_frame_name)
-        if input_source == "Select Existing Batch Crop Session":
-            orig_frame_src = os.path.join("sessions", selected_session, "original_frames", first_frame_name)
-            if os.path.exists(orig_frame_src):
-                shutil.copy2(orig_frame_src, os.path.join(orig_selected_dir, first_frame_name))
-                
+        save_frame_to_dir(first_frame, target_cand_dir, first_frame_name)
+        
         results.append({
             "frame_idx": 1,
             "filename": first_frame_name,
-            "path": os.path.join(selected_dir, first_frame_name),
+            "path": os.path.join(target_cand_dir, first_frame_name),
             "prediction": 1,
             "type": "Keep (First Frame)"
         })
@@ -256,7 +389,6 @@ def render_l1_inference():
             frame_a = image_paths[i]
             frame_b = image_paths[i+1]
             frame_b_name = frame_b.name if not isinstance(frame_b, str) else os.path.basename(frame_b)
-            frame_b_path_str = frame_b.name if not isinstance(frame_b, str) else frame_b
             frame_a_name = frame_a.name if not isinstance(frame_a, str) else os.path.basename(frame_a)
             
             status_text.text(f"Processing transition {i+1}/{len(image_paths)-1}: {frame_a_name} ➔ {frame_b_name}...")
@@ -297,32 +429,28 @@ def render_l1_inference():
             # Store raw transition prediction record for instant real-time threshold slider adjustments
             transitions_cache.append({
                 "pair_idx": i + 2,
-                "frame_b": frame_b,
                 "frame_b_name": frame_b_name,
                 "y_proba": y_proba_val
             })
             
             # Assign prediction to the second frame (Frame B)
+            src_frame_b = os.path.join(target_crop_dir, frame_b_name)
             if pred == 1:
-                save_frame_to_dir(frame_b, selected_dir, frame_b_name)
-                if input_source == "Select Existing Batch Crop Session":
-                    orig_frame_src = os.path.join("sessions", selected_session, "original_frames", frame_b_name)
-                    if os.path.exists(orig_frame_src):
-                        shutil.copy2(orig_frame_src, os.path.join(orig_selected_dir, frame_b_name))
+                save_frame_to_dir(src_frame_b, target_cand_dir, frame_b_name)
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": os.path.join(selected_dir, frame_b_name),
+                    "path": os.path.join(target_cand_dir, frame_b_name),
                     "prediction": 1,
                     "probability": y_proba_val,
                     "type": "Keep (Transition detected)"
                 })
             else:
-                save_frame_to_dir(frame_b, identical_dir, frame_b_name)
+                save_frame_to_dir(src_frame_b, target_identical_dir, frame_b_name)
                 results.append({
                     "frame_idx": i + 2,
                     "filename": frame_b_name,
-                    "path": os.path.join(identical_dir, frame_b_name),
+                    "path": os.path.join(target_identical_dir, frame_b_name),
                     "prediction": 0,
                     "probability": y_proba_val,
                     "type": "Discard (Redundant/Duplicate)"
@@ -334,52 +462,43 @@ def render_l1_inference():
         st.session_state["l1_results"] = results
         st.session_state["l1_transitions_cache"] = transitions_cache
         st.session_state["l1_first_frame_info"] = {
-            "first_frame": first_frame,
             "first_frame_name": first_frame_name
         }
-        st.session_state["l1_out_dir"] = session_out_dir
-        st.session_state["l1_input_source"] = input_source
+        st.session_state["l1_target_session_name"] = target_session_name
+        st.session_state["l1_target_engine"] = target_engine
+        st.session_state["l1_target_crop_dir"] = target_crop_dir
+        st.session_state["l1_target_cand_dir"] = target_cand_dir
+        st.session_state["l1_target_orig_dir"] = target_orig_dir
+        st.session_state["l1_target_identical_dir"] = target_identical_dir
         st.session_state["l1_last_threshold"] = custom_threshold
-        if input_source == "Select Existing Batch Crop Session":
-            st.session_state["l1_selected_session"] = selected_session
             
     # --- 2.5 INSTANT THRESHOLD RE-FILTERING ON SLIDER MOVEMENT (0ms DELAY) ---
     if "l1_transitions_cache" in st.session_state and "l1_results" in st.session_state:
-        # Check if threshold slider changed since last evaluation
         last_thresh = st.session_state.get("l1_last_threshold", None)
         if last_thresh is not None and abs(last_thresh - custom_threshold) > 1e-4:
             st.session_state["l1_last_threshold"] = custom_threshold
             
             transitions_cache = st.session_state["l1_transitions_cache"]
-            out_dir = st.session_state["l1_out_dir"]
-            input_src = st.session_state.get("l1_input_source", "")
-            sel_sess = st.session_state.get("l1_selected_session", "")
+            t_crop_dir = st.session_state.get("l1_target_crop_dir", "")
+            t_cand_dir = st.session_state.get("l1_target_cand_dir", "")
+            t_identical_dir = st.session_state.get("l1_target_identical_dir", "")
             first_info = st.session_state.get("l1_first_frame_info", {})
             
-            selected_dir = os.path.join(out_dir, "selected_frames")
-            identical_dir = os.path.join(out_dir, "identical_frames")
-            orig_selected_dir = os.path.join(out_dir, "selected_original_frames")
+            clean_directory(t_cand_dir)
+            clean_directory(t_identical_dir)
             
-            clean_directory(selected_dir)
-            clean_directory(identical_dir)
-            if input_src == "Select Existing Batch Crop Session":
-                clean_directory(orig_selected_dir)
-                
             updated_results = []
             
             # Keep first frame as candidate
             if first_info:
-                ff_frame = first_info["first_frame"]
                 ff_name = first_info["first_frame_name"]
-                save_frame_to_dir(ff_frame, selected_dir, ff_name)
-                if input_src == "Select Existing Batch Crop Session" and sel_sess:
-                    orig_src = os.path.join("sessions", sel_sess, "original_frames", ff_name)
-                    if os.path.exists(orig_src):
-                        shutil.copy2(orig_src, os.path.join(orig_selected_dir, ff_name))
+                src_ff = os.path.join(t_crop_dir, ff_name)
+                if os.path.exists(src_ff):
+                    save_frame_to_dir(src_ff, t_cand_dir, ff_name)
                 updated_results.append({
                     "frame_idx": 1,
                     "filename": ff_name,
-                    "path": os.path.join(selected_dir, ff_name),
+                    "path": os.path.join(t_cand_dir, ff_name),
                     "prediction": 1,
                     "probability": 1.0,
                     "type": "Keep (First Frame)"
@@ -387,33 +506,29 @@ def render_l1_inference():
                 
             # Instant re-classification for all cached transition probabilities
             for t_item in transitions_cache:
-                fb = t_item["frame_b"]
                 fb_name = t_item["frame_b_name"]
                 prob = t_item["y_proba"]
                 p_idx = t_item["pair_idx"]
+                src_fb = os.path.join(t_crop_dir, fb_name)
                 
                 new_pred = 1 if prob >= custom_threshold else 0
                 
                 if new_pred == 1:
-                    save_frame_to_dir(fb, selected_dir, fb_name)
-                    if input_src == "Select Existing Batch Crop Session" and sel_sess:
-                        orig_src = os.path.join("sessions", sel_sess, "original_frames", fb_name)
-                        if os.path.exists(orig_src):
-                            shutil.copy2(orig_src, os.path.join(orig_selected_dir, fb_name))
+                    save_frame_to_dir(src_fb, t_cand_dir, fb_name)
                     updated_results.append({
                         "frame_idx": p_idx,
                         "filename": fb_name,
-                        "path": os.path.join(selected_dir, fb_name),
+                        "path": os.path.join(t_cand_dir, fb_name),
                         "prediction": 1,
                         "probability": prob,
                         "type": "Keep (Transition detected)"
                     })
                 else:
-                    save_frame_to_dir(fb, identical_dir, fb_name)
+                    save_frame_to_dir(src_fb, t_identical_dir, fb_name)
                     updated_results.append({
                         "frame_idx": p_idx,
                         "filename": fb_name,
-                        "path": os.path.join(identical_dir, fb_name),
+                        "path": os.path.join(t_identical_dir, fb_name),
                         "prediction": 0,
                         "probability": prob,
                         "type": "Discard (Redundant/Duplicate)"
@@ -425,10 +540,10 @@ def render_l1_inference():
     # --- 3. DISPLAY RESULTS GALLERIES ---
     if "l1_results" in st.session_state:
         results = st.session_state["l1_results"]
-        out_dir = st.session_state["l1_out_dir"]
-        
-        selected_dir = os.path.join(out_dir, "selected_frames")
-        identical_dir = os.path.join(out_dir, "identical_frames")
+        target_sess_name = st.session_state.get("l1_target_session_name", "candidate_session")
+        target_eng = st.session_state.get("l1_target_engine", "PP-OCRv3")
+        t_cand_dir = st.session_state.get("l1_target_cand_dir", "")
+        t_orig_dir = st.session_state.get("l1_target_orig_dir", "")
         
         selected_frames = [r for r in results if r["prediction"] == 1]
         identical_frames = [r for r in results if r["prediction"] == 0]
@@ -441,7 +556,7 @@ def render_l1_inference():
         with col_m1:
             st.markdown(
                 f'<div class="metric-card">'
-                f'<div class="metric-title">Total Uploaded Frames</div>'
+                f'<div class="metric-title">Total Input Frames</div>'
                 f'<div class="metric-value">{len(results)}</div>'
                 f'</div>',
                 unsafe_allow_html=True
@@ -463,45 +578,87 @@ def render_l1_inference():
                 unsafe_allow_html=True
             )
             
-        # Download ZIP button
-        zip_path = os.path.join(out_dir, "selected_candidates.zip")
-        create_download_zip(selected_dir, zip_path)
-        
-        l1_in_src = st.session_state.get("l1_input_source", "")
-        
-        if l1_in_src == "Select Existing Batch Crop Session":
-            orig_selected_dir = os.path.join(out_dir, "selected_original_frames")
-            orig_zip_path = os.path.join(out_dir, "selected_original_candidates.zip")
-            create_download_zip(orig_selected_dir, orig_zip_path)
-            
-            col_dl1, col_dl2 = st.columns(2)
-            with col_dl1:
-                with open(zip_path, "rb") as z_file:
-                    st.download_button(
-                        label=f"💾 Download Selected Crops ZIP ({len(selected_frames)} images)",
-                        data=z_file,
-                        file_name="selected_crops.zip",
-                        mime="application/zip",
-                        use_container_width=True
-                    )
-            with col_dl2:
-                with open(orig_zip_path, "rb") as oz_file:
-                    st.download_button(
-                        label=f"🎬 Download Selected Original Video Frames ZIP ({len(selected_frames)} images)",
-                        data=oz_file,
-                        file_name="selected_original_frames.zip",
-                        mime="application/zip",
-                        use_container_width=True
-                    )
-        else:
-            with open(zip_path, "rb") as z_file:
-                st.download_button(
-                    label=f"💾 Download Selected Candidates ZIP ({len(selected_frames)} images)",
-                    data=z_file,
-                    file_name="selected_candidates.zip",
-                    mime="application/zip",
-                    use_container_width=True
-                )
+        # --- SEND & EDIT IN CANDIDATE SELECTOR BANNER ---
+        st.markdown("---")
+        col_banner1, col_banner2 = st.columns([3, 1.5])
+        with col_banner1:
+            st.markdown(
+                f"""
+                <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%); 
+                            border: 1px solid #6366f1; border-radius: 12px; padding: 14px 18px;">
+                    <div style="color: #a78bfa; font-weight: 700; font-size: 1.05rem; margin-bottom: 4px;">
+                        🎯 Candidate Frame Selector Session Ready
+                    </div>
+                    <div style="color: #e2e8f0; font-size: 0.9rem;">
+                        Session: <b><code>{target_sess_name}</code></b> ({target_eng}) &nbsp;|&nbsp; 
+                        Pre-marked candidates: <b style="color: #10b981;">{len(selected_frames)}</b> / {len(results)} frames
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col_banner2:
+            st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+            def goto_candidate_selector_cb(sess_name, eng):
+                st.session_state["selected_module"] = "Candidate Frame Selector"
+                st.session_state["sel_sess_cand"] = sess_name
+                st.session_state["sel_eng_cand"] = eng
+
+            st.button(
+                "🚀 Open in Candidate Selector",
+                type="primary",
+                use_container_width=True,
+                key="btn_open_in_cand_sel",
+                on_click=goto_candidate_selector_cb,
+                args=(target_sess_name, target_eng)
+            )
+
+        # Download ZIP buttons (Lazy preparation to avoid blocking UI execution)
+        st.write("")
+        col_dl1, col_dl2 = st.columns(2)
+        crops_zip_path = os.path.join("sessions", target_sess_name, f"{target_sess_name}_selected_crops.zip")
+        orig_zip_path = os.path.join("sessions", target_sess_name, f"{target_sess_name}_selected_originals.zip")
+
+        if t_cand_dir and os.path.exists(t_cand_dir):
+            if os.path.exists(crops_zip_path):
+                with col_dl1:
+                    with open(crops_zip_path, "rb") as z_file:
+                        st.download_button(
+                            label=f"💾 Download Selected Crops ZIP ({len(selected_frames)} images)",
+                            data=z_file,
+                            file_name=f"{target_sess_name}_selected_crops.zip",
+                            mime="application/zip",
+                            use_container_width=True
+                        )
+            else:
+                with col_dl1:
+                    if st.button(f"📦 Prepare Crops ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_crops_zip"):
+                        with st.spinner("Compressing selected crops..."):
+                            create_download_zip(t_cand_dir, crops_zip_path)
+                        st.rerun()
+                    
+        if t_orig_dir and os.path.exists(t_orig_dir) and len(os.listdir(t_orig_dir)) > 0:
+            if os.path.exists(orig_zip_path):
+                with col_dl2:
+                    with open(orig_zip_path, "rb") as oz_file:
+                        st.download_button(
+                            label=f"🎬 Download Selected Original Frames ZIP ({len(selected_frames)} images)",
+                            data=oz_file,
+                            file_name=f"{target_sess_name}_selected_originals.zip",
+                            mime="application/zip",
+                            use_container_width=True
+                        )
+            else:
+                with col_dl2:
+                    if st.button(f"🎬 Prepare Original Frames ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_orig_zip"):
+                        with st.spinner("Compressing original frames..."):
+                            with zipfile.ZipFile(orig_zip_path, 'w', zipfile.ZIP_DEFLATED) as ozf:
+                                for r in selected_frames:
+                                    fname = r["filename"]
+                                    fpath = os.path.join(t_orig_dir, fname)
+                                    if os.path.exists(fpath):
+                                        ozf.write(fpath, arcname=fname)
+                        st.rerun()
             
         # Interactive Galleries columns
         st.markdown("#### 🖼️ Results Gallery View")
@@ -538,9 +695,61 @@ def render_l1_inference():
         if not active_frames:
             st.info(f"No frames in category: {active_tab}")
         else:
+            # Pagination for gallery
+            frames_per_page = 24
+            total_items = len(active_frames)
+            total_pages = max(1, (total_items + frames_per_page - 1) // frames_per_page)
+            
+            page_key = f"l1_gallery_page_{active_tab}"
+            if page_key not in st.session_state:
+                st.session_state[page_key] = 1
+                
+            if st.session_state[page_key] > total_pages:
+                st.session_state[page_key] = total_pages
+            elif st.session_state[page_key] < 1:
+                st.session_state[page_key] = 1
+                
+            curr_page = st.session_state[page_key]
+            start_idx = (curr_page - 1) * frames_per_page
+            end_idx = min(start_idx + frames_per_page, total_items)
+            page_frames = active_frames[start_idx:end_idx]
+
+            # Trigger background prefetching for the full session across all pages
+            all_session_paths = [r["path"] for r in results]
+            target_sess = st.session_state.get("l1_target_session_name", "l1_session")
+            trigger_background_session_prefetch(all_session_paths, current_page=curr_page, page_size=frames_per_page, session_key=target_sess)
+
+            # Retrieve RAM cache readiness statistics for current tab
+            all_frame_paths = [r["path"] for r in active_frames]
+            cached_count, total_count = get_cache_stats(all_frame_paths)
+            if cached_count >= total_count:
+                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #10b981;'>⚡ <b>{cached_count:,} / {total_count:,}</b> frames pre-warmed in RAM (Instant Browsing Active)</div>"
+            else:
+                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #94a3b8;'>⚡ RAM Cache: <b>{cached_count:,} / {total_count:,}</b> ready (caching session in background...)</div>"
+
+            # Top Pagination Controls
+            col_pg_l, col_pg_info, col_pg_r = st.columns([1, 2, 1])
+            with col_pg_l:
+                if st.button("◀ Previous Page", disabled=(curr_page <= 1), key=f"btn_prev_{active_tab}", use_container_width=True):
+                    st.session_state[page_key] -= 1
+                    st.rerun()
+            with col_pg_info:
+                st.markdown(
+                    f"<div style='text-align: center; padding-top: 4px;'>"
+                    f"<div style='font-size: 0.95rem;'>Page <b>{curr_page}</b> of <b>{total_pages}</b> &nbsp;|&nbsp; "
+                    f"Showing <b>{start_idx + 1}–{end_idx}</b> of <b>{total_items:,}</b> frames</div>"
+                    f"{cache_status_html}"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+            with col_pg_r:
+                if st.button("Next Page ▶", disabled=(curr_page >= total_pages), key=f"btn_next_{active_tab}", use_container_width=True):
+                    st.session_state[page_key] += 1
+                    st.rerun()
+
             with st.container(border=True):
-                for idx in range(0, len(active_frames), grid_cols):
-                    row_frames = active_frames[idx : idx + grid_cols]
+                for idx in range(0, len(page_frames), grid_cols):
+                    row_frames = page_frames[idx : idx + grid_cols]
                     cols = st.columns(grid_cols)
                     for col_idx, r in enumerate(row_frames):
                         with cols[col_idx]:
@@ -551,7 +760,7 @@ def render_l1_inference():
                             
                             st.markdown(
                                 f'<div style="border: 2px solid {border_color}; border-radius: 12px; padding: 6px; background-color: {bg_color}; box-shadow: {shadow}; margin-bottom: 8px;">'
-                                f'<img src="data:image/jpeg;base64,{get_base64_from_filepath(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
+                                f'<img src="data:image/jpeg;base64,{get_cached_thumbnail_b64(r["path"])}" style="width: 100%; border-radius: 8px; display: block;"/>'
                                 f'</div>',
                                 unsafe_allow_html=True
                             )
@@ -560,12 +769,26 @@ def render_l1_inference():
                             st.markdown(f'<span class="status-badge {label_class}">{r["type"]}</span>', unsafe_allow_html=True)
                             st.markdown("---")
 
-def get_base64_from_filepath(path):
-    """Utility helper to load file and encode to base64."""
-    import base64
-    try:
-        with open(path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-            return encoded_string
-    except Exception:
-        return ""
+            # Bottom Pagination Controls
+            if total_pages > 1:
+                st.write("")
+                col_bpg_l, col_bpg_info, col_bpg_r = st.columns([1, 2, 1])
+                with col_bpg_l:
+                    if st.button("◀ Previous Page", disabled=(curr_page <= 1), key=f"btn_bprev_{active_tab}", use_container_width=True):
+                        st.session_state[page_key] -= 1
+                        st.rerun()
+                with col_bpg_info:
+                    st.markdown(
+                        f"<div style='text-align: center; padding-top: 6px; font-size: 0.95rem;'>"
+                        f"Page <b>{curr_page}</b> of <b>{total_pages}</b>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                with col_bpg_r:
+                    if st.button("Next Page ▶", disabled=(curr_page >= total_pages), key=f"btn_bnext_{active_tab}", use_container_width=True):
+                        st.session_state[page_key] += 1
+                        st.rerun()
+
+# Backwards-compatibility aliases for thumbnail cache
+get_base64_from_filepath = get_cached_thumbnail_b64
+trigger_background_prefetch = trigger_background_session_prefetch

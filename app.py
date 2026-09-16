@@ -10,6 +10,7 @@ from modules.batch_manager import render_batch_session_manager
 from modules.candidate_selector import render_candidate_selector
 from modules.pairwise_feature_lab import render_pairwise_feature_lab
 from modules.batch_dataset_generator import render_batch_dataset_generator
+from modules.dataset_combiner import render_dataset_combiner
 
 # --- Safe Index Helper ---
 def safe_index(options, value, default=0):
@@ -194,16 +195,20 @@ button[title="View fullscreen"] {
 """, unsafe_allow_html=True)
 
 # --- Sidebar Module Selector Navigation ---
+if "_redirect_module" in st.session_state:
+    st.session_state["selected_module"] = st.session_state.pop("_redirect_module")
+
 st.sidebar.markdown("<h2 style='color: #a78bfa; margin-bottom: 0px;'>Lab Module Selector</h2>", unsafe_allow_html=True)
+modules_options = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"]
 selected_module = st.sidebar.selectbox(
     "Select Lab Module",
-    ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference"],
-    index=safe_index(["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference"], st.session_state["selected_module"]),
+    modules_options,
+    index=safe_index(modules_options, st.session_state["selected_module"]),
     key="selected_module"
 )
 
 # --- Dynamic Sidebar Rendering Based on Selected Module ---
-if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference"):
+if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"):
     st.sidebar.markdown("<h4 style='color: #a78bfa; margin-top: 20px; margin-bottom: 0px;'>OCR Model Tuning</h4>", unsafe_allow_html=True)
     model_mode_options = ["PP-OCRv3 Det Only", "PP-OCRv4 Det Only", "Compare Both Side-by-Side"]
     model_mode = st.sidebar.radio(
@@ -431,9 +436,9 @@ st.markdown("<h1 class='main-title'>MY RESEARCH LAB FOR EXPERIMENTS</h1>", unsaf
 st.markdown("<p class='subtitle'>Experimental test harness and batch session manager evaluating DBNet text-region classifiers for digital slides and blackboard frames.</p>", unsafe_allow_html=True)
 
 # --- Top Navigation Tabs ---
-tab_cols = st.columns(6)
-modules_list = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference"]
-icons = ["🔍", "📦", "🎯", "📊", "⚙️", "🧠"]
+tab_cols = st.columns(7)
+modules_list = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"]
+icons = ["🔍", "📦", "🎯", "📊", "⚙️", "🧠", "🔀"]
 
 def select_module_cb(module_name):
     st.session_state["selected_module"] = module_name
@@ -467,3 +472,5 @@ elif selected_module == "Batch Dataset Generator":
 elif selected_module == "L1 Inference":
     from modules.l1_inference import render_l1_inference
     render_l1_inference()
+elif selected_module == "Dataset Combiner":
+    render_dataset_combiner()
