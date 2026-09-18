@@ -6,6 +6,12 @@ import numpy as np
 from skimage.metrics import structural_similarity
 from rapidocr_onnxruntime import RapidOCR
 
+# Fallback HF_HOME if pointing to a non-existent/disconnected drive (e.g. D:\)
+if "HF_HOME" in os.environ:
+    _drive = os.path.splitdrive(os.environ["HF_HOME"])[0]
+    if _drive and not os.path.exists(_drive + "\\"):
+        os.environ["HF_HOME"] = os.path.expanduser("~/.cache/huggingface")
+
 # Lazy singleton for RapidOCR engine
 _ocr_engine = None
 
@@ -27,10 +33,11 @@ def check_vit_availability():
 
 _vit_model = None
 _vit_processor = None
+_vit_device = "cpu"
 
 def get_vit_components():
     """Loads pretrained ViT model and processor on demand if dependencies exist."""
-    global _vit_model, _vit_processor
+    global _vit_model, _vit_processor, _vit_device
     avail, _ = check_vit_availability()
     if not avail:
         return None, None
@@ -38,8 +45,10 @@ def get_vit_components():
         import torch
         from transformers import ViTImageProcessor, ViTModel
         model_name = "google/vit-base-patch16-224"
+        _vit_device = "cuda" if torch.cuda.is_available() else "cpu"
         _vit_processor = ViTImageProcessor.from_pretrained(model_name)
         _vit_model = ViTModel.from_pretrained(model_name)
+        _vit_model.to(_vit_device)
         _vit_model.eval()
     return _vit_processor, _vit_model
 
@@ -160,13 +169,14 @@ def extract_single_frame_vit_embedding(img_path):
         from PIL import Image
         pil_img = Image.open(img_path).convert("RGB")
         inputs = processor(images=pil_img, return_tensors="pt")
+        inputs = {k: v.to(_vit_device) for k, v in inputs.items()}
         with torch.no_grad():
             outputs = model(**inputs)
             # Use pooler output or CLS token embedding
             if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
-                emb = outputs.pooler_output[0].cpu().numpy()
+                emb = outputs.pooler_output[0].detach().cpu().numpy()
             else:
-                emb = outputs.last_hidden_state[0, 0].cpu().numpy()
+                emb = outputs.last_hidden_state[0, 0].detach().cpu().numpy()
                 
         norm = np.linalg.norm(emb)
         if norm > 1e-9:
@@ -178,7 +188,7 @@ def extract_single_frame_vit_embedding(img_path):
 # --- Pairwise / Transition Feature Computation ---
 def compute_layout_mask_iou(bboxes_a, bboxes_b, mask_size=256):
     """
-    Renders bounding boxes onto a normalized binary canvas and computes spatial IoU.
+    Renders bounding boxes onto a normalized binary canvas and computes spatial IoU (A1 baseline).
     """
     if not bboxes_a and not bboxes_b:
         return 1.0  # Both empty = identical layout
@@ -203,16 +213,56 @@ def compute_layout_mask_iou(bboxes_a, bboxes_b, mask_size=256):
         return 1.0
     return float(intersection / union)
 
+def compute_directional_layout_preservation(bboxes_a, bboxes_b, mask_size=256):
+    """
+    Renders bounding boxes onto normalized binary masks and computes directional layout preservation:
+    P_layout(Fi -> Fi+1) = Area(M_i AND M_{i+1}) / Area(M_i)
+    L_layout = 1.0 - P_layout
+    Returns: (preservation, loss, layout_valid)
+    """
+    if not bboxes_a and not bboxes_b:
+        # Both empty = unchanged empty layout
+        return 1.0, 0.0, True
+    if not bboxes_a:
+        # Previous frame had no layout = undefined previous layout
+        return 0.0, 1.0, False
+    if not bboxes_b:
+        # Previous had layout, next has none = complete loss of layout
+        return 0.0, 1.0, True
+        
+    mask_a = np.zeros((mask_size, mask_size), dtype=np.uint8)
+    mask_b = np.zeros((mask_size, mask_size), dtype=np.uint8)
+    
+    for box in bboxes_a:
+        pts = np.array([[int(pt[0] * mask_size), int(pt[1] * mask_size)] for pt in box], dtype=np.int32)
+        cv2.fillPoly(mask_a, [pts], 1)
+        
+    for box in bboxes_b:
+        pts = np.array([[int(pt[0] * mask_size), int(pt[1] * mask_size)] for pt in box], dtype=np.int32)
+        cv2.fillPoly(mask_b, [pts], 1)
+        
+    area_a = float(mask_a.sum())
+    if area_a == 0:
+        return 0.0, 1.0, False
+        
+    intersection = float(np.logical_and(mask_a, mask_b).sum())
+    p_layout = round(min(1.0, max(0.0, intersection / area_a)), 4)
+    l_layout = round(1.0 - p_layout, 4)
+    return p_layout, l_layout, True
+
 def compute_pairwise_transition_features(frame_a_data, frame_b_data, img_path_a, img_path_b, vit_emb_a=None, vit_emb_b=None):
     """
     Computes all distance and differential transition features between consecutive frames Fi -> Fi+1.
+    Preserves raw A1 baseline metrics alongside A2 asymmetric containment and directional layout.
     """
     # 1. Temporal distance
     delta_time = frame_b_data["timestamp_sec"] - frame_a_data["timestamp_sec"]
     
-    # 2. Text Jaccard distance
+    # 2. Text Features: Symmetric Jaccard (A1) + Asymmetric Information Containment (A2/B2)
     tokens_a = set(frame_a_data["tokens"])
     tokens_b = set(frame_b_data["tokens"])
+    
+    # 2a. Baseline Symmetric Jaccard Distance
     if not tokens_a and not tokens_b:
         d_ocr = 0.0  # Both have no text
     elif not tokens_a or not tokens_b:
@@ -223,9 +273,26 @@ def compute_pairwise_transition_features(frame_a_data, frame_b_data, img_path_a,
         jaccard = inter / union if union > 0 else 1.0
         d_ocr = round(1.0 - jaccard, 4)
         
-    # 3. Layout IoU distance
+    # 2b. Asymmetric OCR Information Preservation & Loss
+    n_tokens_a = len(tokens_a)
+    n_tokens_b = len(tokens_b)
+    if n_tokens_a == 0:
+        ocr_preservation = None
+        ocr_loss = None
+        ocr_valid_raw = False
+    else:
+        inter_tokens = len(tokens_a & tokens_b)
+        ocr_preservation = round(min(1.0, max(0.0, inter_tokens / n_tokens_a)), 4)
+        ocr_loss = round(1.0 - ocr_preservation, 4)
+        ocr_valid_raw = True
+        
+    # 3. Layout Features: Symmetric IoU (A1) + Directional Layout Preservation (A2/B2)
     layout_iou = compute_layout_mask_iou(frame_a_data["bboxes"], frame_b_data["bboxes"])
     d_layout = round(1.0 - layout_iou, 4)
+    
+    layout_pres, layout_loss, layout_valid = compute_directional_layout_preservation(
+        frame_a_data["bboxes"], frame_b_data["bboxes"]
+    )
     
     # 4. SSIM distance
     d_ssim = 1.0
@@ -277,7 +344,13 @@ def compute_pairwise_transition_features(frame_a_data, frame_b_data, img_path_a,
         "token_count_diff": abs(n_b - n_a),
         "d_ssim": d_ssim,
         "d_ocr_jaccard": d_ocr,
+        "ocr_preservation": ocr_preservation,
+        "ocr_loss": ocr_loss,
+        "ocr_valid_raw": ocr_valid_raw,
         "d_layout_iou": d_layout,
+        "layout_preservation": layout_pres,
+        "layout_loss": layout_loss,
+        "layout_valid": layout_valid,
         "d_vit_cosine": d_vit
     }
 
@@ -311,7 +384,8 @@ def load_cached_features(session_dir):
         return None, None
 
 def save_features_to_cache(session_dir, frame_records, transition_records, vit_dict=None):
-    """Saves extracted frame and transition features to disk."""
+    """Saves extracted frame and transition features to disk and exports raw pairwise CSV."""
+    import csv
     l2_dir = get_session_level2_dir(session_dir)
     cache_path = os.path.join(l2_dir, "features_cache.json")
     
@@ -328,3 +402,41 @@ def save_features_to_cache(session_dir, frame_records, transition_records, vit_d
     if vit_dict and len(vit_dict) > 0:
         vit_path = os.path.join(l2_dir, "vit_embeddings.npz")
         np.savez_compressed(vit_path, **vit_dict)
+        
+    # Auto-export raw features CSV for downstream analysis / supervised ML
+    csv_raw_path = os.path.join(l2_dir, "l2_pairwise_features.csv")
+    csv_headers = [
+        "pair_idx", "frame_a", "frame_b", "original_frame_id_a", "original_frame_id_b",
+        "timestamp_a", "timestamp_b", "delta_time_sec",
+        "token_count_a", "token_count_b", "token_count_diff",
+        "d_ssim", "d_ocr_jaccard", "ocr_preservation", "ocr_loss", "ocr_valid_raw",
+        "d_layout_iou", "layout_preservation", "layout_loss", "layout_valid",
+        "d_vit_cosine"
+    ]
+    with open(csv_raw_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(csv_headers)
+        for t in transition_records:
+            writer.writerow([
+                t.get("pair_idx", ""),
+                t.get("frame_a", ""),
+                t.get("frame_b", ""),
+                t.get("original_frame_id_a", ""),
+                t.get("original_frame_id_b", ""),
+                t.get("timestamp_a", ""),
+                t.get("timestamp_b", ""),
+                t.get("delta_time_sec", 0),
+                t.get("token_count_a", 0),
+                t.get("token_count_b", 0),
+                t.get("token_count_diff", 0),
+                t.get("d_ssim", ""),
+                t.get("d_ocr_jaccard", ""),
+                t.get("ocr_preservation", ""),
+                t.get("ocr_loss", ""),
+                t.get("ocr_valid_raw", ""),
+                t.get("d_layout_iou", ""),
+                t.get("layout_preservation", ""),
+                t.get("layout_loss", ""),
+                t.get("layout_valid", ""),
+                t.get("d_vit_cosine", "")
+            ])

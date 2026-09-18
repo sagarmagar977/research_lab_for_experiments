@@ -335,78 +335,74 @@ button[aria-label*="Sidebar" i]:hover::after {
 }
 
 /* ============================================================
-   GLOBAL HIGH-VISIBILITY LIGHT BLUE BUTTONS
+   GLOBAL HIGH-CONTRAST MONOCHROME BUTTONS (Pure Black & White)
    ============================================================ */
 
 /* Primary Action Buttons (e.g. Start Generation, Run Inference, Compute Features) */
 button[data-testid="baseButton-primary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button),
-button[kind="primary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button),
-div:not([class*="st-key-main_tab_btn_"]) > button[kind="primary"],
-div:not([class*="st-key-main_tab_btn_"]) > div > button[kind="primary"],
-div:not([class*="st-key-main_tab_btn_"]) > div > div > button[kind="primary"] {
-    background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
-    background-color: #0ea5e9 !important;
-    color: #ffffff !important;
-    border: 1px solid #38bdf8 !important;
-    border-radius: 7px !important;
-    font-weight: 600 !important;
+button[kind="primary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button) {
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    border: 1px solid #ffffff !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
     font-size: 0.90rem !important;
     letter-spacing: -0.01em !important;
-    box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35) !important;
-    transition: all 0.15s ease !important;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15) !important;
+    transition: all 0.12s ease !important;
 }
 
-/* Ensure inner text elements in primary buttons are pure white and bold */
+/* Ensure inner text elements in primary buttons are deep black and bold */
 button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button) *,
 button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button) * {
-    color: #ffffff !important;
-    font-weight: 600 !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
     opacity: 1 !important;
 }
 
 button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button):hover,
-button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button):hover,
-div:not([class*="st-key-main_tab_btn_"]) > button[kind="primary"]:hover,
-div:not([class*="st-key-main_tab_btn_"]) > div > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%) !important;
-    background-color: #0284c7 !important;
-    border-color: #7dd3fc !important;
-    box-shadow: 0 4px 18px rgba(56, 189, 248, 0.5) !important;
+button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button):hover {
+    background-color: #e4e4e7 !important;
+    border-color: #d4d4d8 !important;
+    color: #000000 !important;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25) !important;
     transform: translateY(-1px) !important;
 }
 
 button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button):active,
 button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button):active {
     transform: translateY(1px) !important;
-    box-shadow: 0 1px 4px rgba(14, 165, 233, 0.4) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Secondary Action Buttons (excluding folder tabs, sidebar icon, and file uploader) */
 button[data-testid="baseButton-secondary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button),
 button[kind="secondary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) {
-    background-color: #0c1322 !important;
-    border: 1px solid #1e3a5f !important;
-    border-radius: 7px !important;
-    color: #bae6fd !important;
+    background-color: #121215 !important;
+    background-image: none !important;
+    border: 1px solid #27272a !important;
+    border-radius: 6px !important;
+    color: #f4f4f5 !important;
     font-weight: 500 !important;
     font-size: 0.88rem !important;
     letter-spacing: -0.01em !important;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
-    transition: all 0.15s ease !important;
+    transition: all 0.12s ease !important;
 }
 
 button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) *,
 button[kind="secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) * {
-    color: #bae6fd !important;
+    color: #f4f4f5 !important;
     font-weight: 500 !important;
 }
 
 button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button):hover,
 button[kind="secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button):hover {
-    background-color: #16243b !important;
-    border-color: #38bdf8 !important;
+    background-color: #1c1c20 !important;
+    border-color: #52525b !important;
     color: #ffffff !important;
-    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.25) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -414,16 +410,16 @@ button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"
     color: #ffffff !important;
 }
 
-/* Specific styling for file uploader trigger button: crisp light blue outline */
+/* File Uploader Button - Clean Monochrome */
 [data-testid="stFileUploaderDropzone"] button {
-    background-color: #0c1322 !important;
-    border: 1px solid #0284c7 !important;
-    color: #38bdf8 !important;
+    background-color: #121215 !important;
+    border: 1px solid #3f3f46 !important;
+    color: #ffffff !important;
     font-weight: 600 !important;
 }
 [data-testid="stFileUploaderDropzone"] button:hover {
-    background-color: #0369a1 !important;
-    border-color: #38bdf8 !important;
+    background-color: #1f1f23 !important;
+    border-color: #71717a !important;
     color: #ffffff !important;
 }
 [data-testid="stFileUploaderDropzone"] button span {
@@ -445,13 +441,14 @@ div[class*="st-key-rm_show_"] button * {
 }
 
 /* ============================================================
-   MODERN FOLDER TABS (Task Manager Segmented Tab Bar)
+   WINDOWS TASK MANAGER STYLE FOLDER TAB NAVBAR (Pure Monochrome)
    ============================================================ */
 [data-testid="stHorizontalBlock"]:has(div[class*="st-key-main_tab_btn_"]) {
     display: flex !important;
-    gap: 3px !important;
+    gap: 2px !important;
     border-bottom: 1px solid #27272a !important;
     padding-bottom: 0px !important;
+    margin-top: 0.5rem !important;
     margin-bottom: 1.5rem !important;
     align-items: flex-end !important;
 }
@@ -463,89 +460,72 @@ div[class*="st-key-rm_show_"] button * {
     margin: 0 !important;
 }
 
+/* Base Tab Button */
 div[class*="st-key-main_tab_btn_"] button {
-    border-radius: 5px 5px 0 0 !important;
+    border-radius: 4px 4px 0 0 !important;
     font-family: 'Söhne', 'Soehne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     font-size: 0.78rem !important;
-    font-weight: 500 !important;
-    letter-spacing: -0.01em !important;
-    padding: 7px 4px !important;
-    height: 38px !important;
+    padding: 6px 3px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     margin-bottom: -1px !important;
-    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease !important;
 }
 
-/* Inactive Folder Tab (flat, rests on baseline) */
+/* Inactive Folder Tab (flat, rests on baseline, muted gray text) */
 div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"],
 div[class*="st-key-main_tab_btn_"] button[kind="secondary"] {
-    background-color: #0c0c0e !important;
-    color: #71717a !important;
+    background-color: #0d0d10 !important;
+    background-image: none !important;
+    color: #82828c !important;
     border: 1px solid #27272a !important;
     border-bottom: 1px solid #27272a !important;
-    box-shadow: none !important;
+    font-weight: 500 !important;
+    height: 36px !important;
+    transform: none !important;
+}
+
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"] *,
+div[class*="st-key-main_tab_btn_"] button[kind="secondary"] * {
+    color: #82828c !important;
+    font-weight: 500 !important;
 }
 
 div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"]:hover,
 div[class*="st-key-main_tab_btn_"] button[kind="secondary"]:hover {
-    background-color: #18181b !important;
+    background-color: #18181c !important;
     color: #ffffff !important;
     border-color: #3f3f46 !important;
 }
 
-/* Active Folder Tab (elevated, light blue top border, seamlessly open to bottom) */
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"]:hover * {
+    color: #ffffff !important;
+}
+
+/* Active Folder Tab (Windows Task Manager style: elevated, white top highlight, open bottom) */
 div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-primary"],
 div[class*="st-key-main_tab_btn_"] button[kind="primary"] {
-    background-color: #18181b !important;
+    background-color: #1a1a1e !important;
     background-image: none !important;
     color: #ffffff !important;
     border: 1px solid #3f3f46 !important;
-    border-top: 2px solid #38bdf8 !important;
-    border-bottom: 1px solid #18181b !important;
-    font-weight: 600 !important;
+    border-top: 2px solid #ffffff !important;
+    border-bottom: 1px solid #1a1a1e !important;
+    font-weight: 700 !important;
     position: relative !important;
     z-index: 10 !important;
-    height: 41px !important;
-    transform: translateY(-2px) !important;
+    height: 39px !important;
+    transform: translateY(-1px) !important;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Style all native st.tabs to also follow the Folder Tab design */
-.stTabs [data-baseweb="tab-list"] {
-    border-bottom: 1px solid #27272a !important;
-    gap: 3px !important;
-    background-color: transparent !important;
-}
-.stTabs [data-baseweb="tab"] {
-    background-color: #0c0c0e !important;
-    border: 1px solid #27272a !important;
-    border-bottom: 1px solid #27272a !important;
-    border-radius: 5px 5px 0 0 !important;
-    color: #71717a !important;
-    font-family: 'Söhne', 'Soehne', sans-serif !important;
-    font-size: 0.82rem !important;
-    padding: 6px 14px !important;
-    margin-bottom: -1px !important;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    background-color: #18181b !important;
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-primary"] *,
+div[class*="st-key-main_tab_btn_"] button[kind="primary"] * {
     color: #ffffff !important;
-    border-color: #3f3f46 !important;
-}
-.stTabs [aria-selected="true"] {
-    background-color: #18181b !important;
-    background-image: none !important;
-    color: #ffffff !important;
-    border: 1px solid #3f3f46 !important;
-    border-top: 2px solid #38bdf8 !important;
-    border-bottom: 1px solid #18181b !important;
-    font-weight: 600 !important;
-    transform: translateY(-2px) !important;
-}
-.stTabs [data-baseweb="tab-highlight"] {
-    display: none !important;
+    font-weight: 700 !important;
 }
 </style>
 """, unsafe_allow_html=True)
