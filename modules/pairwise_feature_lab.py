@@ -1205,8 +1205,8 @@ def render_pairwise_feature_lab():
     
     # --- Persistent Experiment Configuration Banner ---
     st.markdown(f"""
-    <div style="background-color: #1e1e2f; padding: 1rem; border-radius: 8px; border: 1px solid #2e2e4f; margin-bottom: 1.5rem;">
-        <span style="color: #a78bfa; font-weight: bold;">Experiment Config:</span> 
+    <div style="background-color: #121214; padding: 1rem; border-radius: 8px; border: 1px solid #27272a; margin-bottom: 1.5rem;">
+        <span style="color: #ffffff; font-weight: bold;">Experiment Config:</span> 
         Bins: <code>{config.hist_bins}</code> | 
         Hist Metric: <code>{config.hist_method}</code> | 
         Grid: <code>{config.edge_grid_size}x{config.edge_grid_size}</code> | 
@@ -1226,7 +1226,7 @@ def render_pairwise_feature_lab():
     
     # --- VISUALIZATIONS ---
     st.markdown("---")
-    st.markdown("### 📊 Visualizations Panel")
+    st.markdown("### Visualizations Panel")
     
     # 1. Overlay grids
     tab_grids, tab_edges, tab_text, tab_diffs = st.tabs(["Original / Grids", "Canny Edge Overlays", "Morphology Text Masks", "Pixel / SSIM Diffs"])
@@ -1270,7 +1270,7 @@ def render_pairwise_feature_lab():
         
     # --- FEATURES TABLE ---
     st.markdown("---")
-    st.markdown("### 📋 Computed Features Tables")
+    st.markdown("### Computed Features Tables")
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
@@ -1346,13 +1346,13 @@ def render_pairwise_feature_lab():
     # --- REPORT PANEL & EXPORTS ---
     st.markdown("---")
     
-    st.markdown("#### 💾 CSV Export Preview (119 Features, Headed)")
+    st.markdown("#### CSV Export Preview (119 Features, Headed)")
     final_csv_row = CSVExporter.export(fa, fb, pf, include_header=True)
     
     st.code(final_csv_row, language="text")
     
     st.download_button(
-        label="💾 Download Pairwise Vector CSV (119 Features, Headed)",
+        label="Download Pairwise Vector CSV (119 Features, Headed)",
         data=final_csv_row,
         file_name="pairwise_vector.csv",
         mime="text/csv",
@@ -1361,10 +1361,10 @@ def render_pairwise_feature_lab():
 
     # Local Downloads Directory Exporter
     st.markdown("---")
-    st.markdown("#### 📂 Local Downloads Directory Export")
+    st.markdown("#### Local Downloads Directory Export")
     st.write("Export all generated single-pair files to your local system `Downloads/downloads` directory.")
     
-    single_export_btn = st.button("💾 Export all single-pair files to Downloads/downloads/pairwise_single_export/", use_container_width=True, key="btn_single_export_local")
+    single_export_btn = st.button("Export all single-pair files to Downloads/downloads/pairwise_single_export/", use_container_width=True, key="btn_single_export_local")
     if single_export_btn:
         try:
             downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -1407,6 +1407,6 @@ def render_pairwise_feature_lab():
         
     # --- DEBUG CONSOLE LOGS ---
     st.markdown("---")
-    with st.expander("🛠️ Debug Console Logs", expanded=False):
+    with st.expander("Debug Console Logs", expanded=False):
         for line in logs:
             st.text(line)

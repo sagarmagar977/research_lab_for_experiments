@@ -65,7 +65,7 @@ def save_frame_to_dir(frame_item, target_dir, filename):
             f.write(frame_item.getbuffer())
 
 def render_l1_inference():
-    st.markdown("### 🧠 Level 1 Model Batch Inference")
+    st.markdown("### Level 1 Model Batch Inference")
     st.write("Run sequential pairwise inference using trained L1 classification models to automatically filter candidate slides and identify duplicate/redundant frames.")
 
     # --- 1. Load Trained Models from L1_models folder ---
@@ -132,7 +132,7 @@ def render_l1_inference():
             save_last_used_l1_model(current_sel)
 
     # --- Sidebar Configuration & Model Selection ---
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-top: 20px; margin-bottom: 0px;'>L1 Model Selection</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-top: 20px; margin-bottom: 0px;'>L1 Model Selection</h4>", unsafe_allow_html=True)
     selected_model_file = st.sidebar.selectbox(
         "Select Classification Model",
         pkl_files,
@@ -182,7 +182,7 @@ def render_l1_inference():
         return
 
     # --- Input Source: Triple input method ---
-    st.markdown("#### 📥 Select Input Source")
+    st.markdown("#### Select Input Source")
     input_source = st.radio(
         "Choose how to load frames for batch inference",
         ["Select Existing Batch Crop Session", "Upload New Sequential Frames", "Load from Local Folder Path"],
@@ -244,7 +244,7 @@ def render_l1_inference():
             return
             
         image_paths = [os.path.join(session_crop_dir, f) for f in cropped_files]
-        st.success(f"Ready to process **{len(image_paths)}** frames from session: `{selected_session}` ({selected_engine}) ➔ Target: `{target_session_name}`")
+        st.success(f"Ready to process **{len(image_paths)}** frames from session: `{selected_session}` ({selected_engine}) -> Target: `{target_session_name}`")
 
     elif input_source == "Upload New Sequential Frames":
         col_up1, col_up2 = st.columns([2, 1])
@@ -267,7 +267,7 @@ def render_l1_inference():
             
         uploaded_files = sorted(uploaded_files, key=lambda x: x.name)
         image_paths = uploaded_files
-        st.success(f"Ready to process **{len(image_paths)}** uploaded frames ➔ Target Session: `{target_session_name}`")
+        st.success(f"Ready to process **{len(image_paths)}** uploaded frames -> Target Session: `{target_session_name}`")
 
     else:
         # Load from Local Folder Path
@@ -291,7 +291,7 @@ def render_l1_inference():
             target_session_name = sanitize_session_name(session_name_input)
             
         image_paths = [os.path.join(local_folder_path, f) for f in detected_files]
-        st.success(f"Found **{len(image_paths)}** frames in local folder ➔ Target Session: `{target_session_name}`")
+        st.success(f"Found **{len(image_paths)}** frames in local folder -> Target Session: `{target_session_name}`")
 
     # Define target session structure
     target_session_dir = os.path.join("sessions", target_session_name)
@@ -304,7 +304,7 @@ def render_l1_inference():
     target_identical_dir = os.path.join(target_session_dir, "identical_frames")
 
     # --- 2. RUN INFERENCE PIPELINE ---
-    run_inference_btn = st.button("🚀 Run L1 Batch Inference", type="primary", use_container_width=True)
+    run_inference_btn = st.button("Run L1 Batch Inference", type="primary", use_container_width=True)
     
     if run_inference_btn:
         if len(image_paths) < 2:
@@ -391,7 +391,7 @@ def render_l1_inference():
             frame_b_name = frame_b.name if not isinstance(frame_b, str) else os.path.basename(frame_b)
             frame_a_name = frame_a.name if not isinstance(frame_a, str) else os.path.basename(frame_a)
             
-            status_text.text(f"Processing transition {i+1}/{len(image_paths)-1}: {frame_a_name} ➔ {frame_b_name}...")
+            status_text.text(f"Processing transition {i+1}/{len(image_paths)-1}: {frame_a_name} -> {frame_b_name}...")
             
             # Read images
             img_a = read_frame_image(frame_a)
@@ -535,7 +535,7 @@ def render_l1_inference():
                     })
                     
             st.session_state["l1_results"] = updated_results
-            st.toast(f"⚡ Instant Threshold Update: Applied T = {custom_threshold:.2f} (0ms delay)", icon="⚡")
+            st.toast(f"Instant Threshold Update: Applied T = {custom_threshold:.2f} (0ms delay)")
         
     # --- 3. DISPLAY RESULTS GALLERIES ---
     if "l1_results" in st.session_state:
@@ -549,7 +549,7 @@ def render_l1_inference():
         identical_frames = [r for r in results if r["prediction"] == 0]
         
         st.markdown("---")
-        st.markdown("### 📊 Inference Results Summary")
+        st.markdown("### Inference Results Summary")
         
         # Display Metrics Cards
         col_m1, col_m2, col_m3 = st.columns(3)
@@ -584,12 +584,11 @@ def render_l1_inference():
         with col_banner1:
             st.markdown(
                 f"""
-                <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%); 
-                            border: 1px solid #6366f1; border-radius: 12px; padding: 14px 18px;">
-                    <div style="color: #a78bfa; font-weight: 700; font-size: 1.05rem; margin-bottom: 4px;">
-                        🎯 Candidate Frame Selector Session Ready
+                <div style="background-color: #141414; border: 1px solid #27272a; border-radius: 8px; padding: 14px 18px;">
+                    <div style="color: #ffffff; font-weight: 700; font-size: 1.05rem; margin-bottom: 4px;">
+                        Candidate Frame Selector Session Ready
                     </div>
-                    <div style="color: #e2e8f0; font-size: 0.9rem;">
+                    <div style="color: #a1a1aa; font-size: 0.9rem;">
                         Session: <b><code>{target_sess_name}</code></b> ({target_eng}) &nbsp;|&nbsp; 
                         Pre-marked candidates: <b style="color: #10b981;">{len(selected_frames)}</b> / {len(results)} frames
                     </div>
@@ -605,7 +604,7 @@ def render_l1_inference():
                 st.session_state["sel_eng_cand"] = eng
 
             st.button(
-                "🚀 Open in Candidate Selector",
+                "Open in Candidate Selector",
                 type="primary",
                 use_container_width=True,
                 key="btn_open_in_cand_sel",
@@ -624,7 +623,7 @@ def render_l1_inference():
                 with col_dl1:
                     with open(crops_zip_path, "rb") as z_file:
                         st.download_button(
-                            label=f"💾 Download Selected Crops ZIP ({len(selected_frames)} images)",
+                            label=f"Download Selected Crops ZIP ({len(selected_frames)} images)",
                             data=z_file,
                             file_name=f"{target_sess_name}_selected_crops.zip",
                             mime="application/zip",
@@ -632,7 +631,7 @@ def render_l1_inference():
                         )
             else:
                 with col_dl1:
-                    if st.button(f"📦 Prepare Crops ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_crops_zip"):
+                    if st.button(f"Prepare Crops ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_crops_zip"):
                         with st.spinner("Compressing selected crops..."):
                             create_download_zip(t_cand_dir, crops_zip_path)
                         st.rerun()
@@ -642,7 +641,7 @@ def render_l1_inference():
                 with col_dl2:
                     with open(orig_zip_path, "rb") as oz_file:
                         st.download_button(
-                            label=f"🎬 Download Selected Original Frames ZIP ({len(selected_frames)} images)",
+                            label=f"Download Selected Original Frames ZIP ({len(selected_frames)} images)",
                             data=oz_file,
                             file_name=f"{target_sess_name}_selected_originals.zip",
                             mime="application/zip",
@@ -650,7 +649,7 @@ def render_l1_inference():
                         )
             else:
                 with col_dl2:
-                    if st.button(f"🎬 Prepare Original Frames ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_orig_zip"):
+                    if st.button(f"Prepare Original Frames ZIP ({len(selected_frames)} images)", use_container_width=True, key="btn_prep_orig_zip"):
                         with st.spinner("Compressing original frames..."):
                             with zipfile.ZipFile(orig_zip_path, 'w', zipfile.ZIP_DEFLATED) as ozf:
                                 for r in selected_frames:
@@ -661,7 +660,7 @@ def render_l1_inference():
                         st.rerun()
             
         # Interactive Galleries columns
-        st.markdown("#### 🖼️ Results Gallery View")
+        st.markdown("#### Results Gallery View")
         
         # Initialize active tab in session state if not present
         if "l1_gallery_tab" not in st.session_state:
@@ -669,15 +668,15 @@ def render_l1_inference():
             
         col_b1, col_b2, col_b3 = st.columns(3)
         with col_b1:
-            if st.button(f"📁 All Uploaded ({len(results)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "All Uploaded" else "secondary"):
+            if st.button(f"All Uploaded ({len(results)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "All Uploaded" else "secondary"):
                 st.session_state["l1_gallery_tab"] = "All Uploaded"
                 st.rerun()
         with col_b2:
-            if st.button(f"🎯 Selected Candidates ({len(selected_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Selected Candidates" else "secondary"):
+            if st.button(f"Selected Candidates ({len(selected_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Selected Candidates" else "secondary"):
                 st.session_state["l1_gallery_tab"] = "Selected Candidates"
                 st.rerun()
         with col_b3:
-            if st.button(f"🔁 Identical / Redundant ({len(identical_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Identical / Redundant" else "secondary"):
+            if st.button(f"Identical / Redundant ({len(identical_frames)})", use_container_width=True, type="primary" if st.session_state["l1_gallery_tab"] == "Identical / Redundant" else "secondary"):
                 st.session_state["l1_gallery_tab"] = "Identical / Redundant"
                 st.rerun()
                 
@@ -723,27 +722,27 @@ def render_l1_inference():
             all_frame_paths = [r["path"] for r in active_frames]
             cached_count, total_count = get_cache_stats(all_frame_paths)
             if cached_count >= total_count:
-                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #10b981;'>⚡ <b>{cached_count:,} / {total_count:,}</b> frames pre-warmed in RAM (Instant Browsing Active)</div>"
+                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #10b981;'><b>{cached_count:,} / {total_count:,}</b> frames pre-warmed in RAM (Instant Browsing Active)</div>"
             else:
-                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #94a3b8;'>⚡ RAM Cache: <b>{cached_count:,} / {total_count:,}</b> ready (caching session in background...)</div>"
+                cache_status_html = f"<div style='margin-top: 3px; font-size: 0.82rem; color: #94a3b8;'>RAM Cache: <b>{cached_count:,} / {total_count:,}</b> ready (caching session in background...)</div>"
 
             # Top Pagination Controls
             col_pg_l, col_pg_info, col_pg_r = st.columns([1, 2, 1])
             with col_pg_l:
-                if st.button("◀ Previous Page", disabled=(curr_page <= 1), key=f"btn_prev_{active_tab}", use_container_width=True):
+                if st.button("Previous Page", disabled=(curr_page <= 1), key=f"btn_prev_{active_tab}", use_container_width=True):
                     st.session_state[page_key] -= 1
                     st.rerun()
             with col_pg_info:
                 st.markdown(
                     f"<div style='text-align: center; padding-top: 4px;'>"
                     f"<div style='font-size: 0.95rem;'>Page <b>{curr_page}</b> of <b>{total_pages}</b> &nbsp;|&nbsp; "
-                    f"Showing <b>{start_idx + 1}–{end_idx}</b> of <b>{total_items:,}</b> frames</div>"
+                    f"Showing <b>{start_idx + 1}-{end_idx}</b> of <b>{total_items:,}</b> frames</div>"
                     f"{cache_status_html}"
                     f"</div>",
                     unsafe_allow_html=True
                 )
             with col_pg_r:
-                if st.button("Next Page ▶", disabled=(curr_page >= total_pages), key=f"btn_next_{active_tab}", use_container_width=True):
+                if st.button("Next Page", disabled=(curr_page >= total_pages), key=f"btn_next_{active_tab}", use_container_width=True):
                     st.session_state[page_key] += 1
                     st.rerun()
 
@@ -774,7 +773,7 @@ def render_l1_inference():
                 st.write("")
                 col_bpg_l, col_bpg_info, col_bpg_r = st.columns([1, 2, 1])
                 with col_bpg_l:
-                    if st.button("◀ Previous Page", disabled=(curr_page <= 1), key=f"btn_bprev_{active_tab}", use_container_width=True):
+                    if st.button("Previous Page", disabled=(curr_page <= 1), key=f"btn_bprev_{active_tab}", use_container_width=True):
                         st.session_state[page_key] -= 1
                         st.rerun()
                 with col_bpg_info:
@@ -785,7 +784,7 @@ def render_l1_inference():
                         unsafe_allow_html=True
                     )
                 with col_bpg_r:
-                    if st.button("Next Page ▶", disabled=(curr_page >= total_pages), key=f"btn_bnext_{active_tab}", use_container_width=True):
+                    if st.button("Next Page", disabled=(curr_page >= total_pages), key=f"btn_bnext_{active_tab}", use_container_width=True):
                         st.session_state[page_key] += 1
                         st.rerun()
 

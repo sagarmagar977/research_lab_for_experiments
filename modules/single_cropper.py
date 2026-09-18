@@ -286,8 +286,8 @@ def render_single_cropper_tab(engine_v3, engine_v4):
         st.info("Please upload a frame image from the uploader to begin testing.")
         
         st.markdown("""
-        <div style="background-color: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px dashed #4b5563; text-align: center; color: #9ca3af; margin-top: 1rem;">
-            <h3 style="color: #a78bfa; margin-bottom: 0.5rem;">Visualizer Preview Workspace</h3>
+        <div style="background-color: #121214; padding: 2rem; border-radius: 8px; border: 1px dashed #27272a; text-align: center; color: #71717a; margin-top: 1rem;">
+            <h3 style="color: #ffffff; margin-bottom: 0.5rem;">Visualizer Preview Workspace</h3>
             <p>Your original image, boundary crops, text heatmaps, and cropped region metrics will render here once uploaded.</p>
         </div>
         """, unsafe_allow_html=True)

@@ -46,13 +46,13 @@ def format_dataset_label(path):
             size_str = f"{size_kb / 1024.0:.1f} MB"
         else:
             size_str = f"{size_kb:.1f} KB"
-        return f"{os.path.basename(path)} ({size_str}, {dt_str}) — [{os.path.dirname(path)}]"
+        return f"{os.path.basename(path)} ({size_str}, {dt_str}) - [{os.path.dirname(path)}]"
     except Exception:
         return path
 
 def render_dataset_combiner():
     """Main rendering entrypoint for Dataset Combiner & Multi-Session Merger module."""
-    st.markdown("### 🔀 Dataset Combiner & Multi-Session Merger")
+    st.markdown("### Dataset Combiner & Multi-Session Merger")
     st.markdown(
         "<p style='color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem;'>"
         "Select and merge multiple pairwise transition datasets into a single unified training corpus. "
@@ -65,7 +65,7 @@ def render_dataset_combiner():
     default_output_dir = os.path.normpath("mixed_dataset/mixed")
     os.makedirs(default_output_dir, exist_ok=True)
 
-    tab_combine, tab_history = st.tabs(["⚡ Merge & Combine Datasets", "📂 Combined Datasets History (Latest First)"])
+    tab_combine, tab_history = st.tabs(["Merge & Combine Datasets", "Combined Datasets History (Latest First)"])
 
     # =========================================================================
     # TAB 1: MERGE & COMBINE DATASETS
@@ -126,7 +126,7 @@ def render_dataset_combiner():
 
         total_selected = len(datasets_to_merge)
         if total_selected < 2:
-            st.info(f"💡 Currently {total_selected} dataset(s) selected. Please select or upload at least **2 datasets** to begin merging.")
+            st.info(f"Currently {total_selected} dataset(s) selected. Please select or upload at least **2 datasets** to begin merging.")
             st.markdown("---")
             return
 
@@ -153,15 +153,15 @@ def render_dataset_combiner():
                     
             with inspect_cols[c_idx]:
                 with st.container(border=True):
-                    st.markdown(f"**📄 {item['name']}**")
+                    st.markdown(f"**{item['name']}**")
                     st.markdown(f"**Rows:** `{rows:,}` | **Cols:** `{cols}`")
                     if gt_col:
                         counts = df[gt_col].value_counts()
                         k_count = counts.get(1, 0)
                         d_count = counts.get(0, 0)
                         k_ratio = (k_count / rows * 100.0) if rows > 0 else 0
-                        st.markdown(f"• **Keep (1):** `{k_count:,}` ({k_ratio:.1f}%)")
-                        st.markdown(f"• **Discard (0):** `{d_count:,}` ({100.0 - k_ratio:.1f}%)")
+                        st.markdown(f"- **Keep (1):** `{k_count:,}` ({k_ratio:.1f}%)")
+                        st.markdown(f"- **Discard (0):** `{d_count:,}` ({100.0 - k_ratio:.1f}%)")
                     else:
                         st.caption("No GroundTruth / label column found.")
 
@@ -175,17 +175,17 @@ def render_dataset_combiner():
             st.markdown(
                 f"<div style='background-color: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; "
                 f"border-radius: 8px; padding: 10px; margin-top: 10px; color: #10b981; font-weight: 600;'>"
-                f"✅ Perfect Schema Alignment: All {len(common_cols)} columns match identically across all selected datasets."
+                f"Perfect Schema Alignment: All {len(common_cols)} columns match identically across all selected datasets."
                 f"</div>",
                 unsafe_allow_html=True
             )
         else:
             diff_cols = all_cols - common_cols
             st.warning(
-                f"⚠️ Schema Discrepancy: Datasets have {len(common_cols)} common columns and "
+                f"Schema Discrepancy: Datasets have {len(common_cols)} common columns and "
                 f"{len(diff_cols)} divergent columns."
             )
-            with st.expander("🔍 View Divergent Columns Details"):
+            with st.expander("View Divergent Columns Details"):
                 st.write("**Common Columns:**", sorted(list(common_cols)))
                 st.write("**Divergent Columns:**", sorted(list(diff_cols)))
 
@@ -200,7 +200,7 @@ def render_dataset_combiner():
         with cfg_col1:
             schema_mode = st.radio(
                 "Feature Schema Alignment Strategy",
-                ["Intersection (Common Columns Only — Recommended)", "Union (All Columns — Zero-Fill Missing)"],
+                ["Intersection (Common Columns Only - Recommended)", "Union (All Columns - Zero-Fill Missing)"],
                 index=0,
                 help="Intersection keeps only features present in all datasets, ensuring maximum model training compatibility."
             )
@@ -223,7 +223,7 @@ def render_dataset_combiner():
         st.markdown("")
         
         # Action button to trigger merge
-        if st.button("🚀 Merge & Save Combined Dataset", type="primary", use_container_width=True):
+        if st.button("Merge & Save Combined Dataset", type="primary", use_container_width=True):
             with st.spinner("Merging datasets and standardizing features..."):
                 processed_dfs = []
                 for item in datasets_to_merge:
@@ -255,7 +255,7 @@ def render_dataset_combiner():
                 combined_df.to_csv(target_path, index=False)
                 
                 st.success(
-                    f"🎉 Successfully created **{custom_filename}**! "
+                    f"Successfully created **{custom_filename}**! "
                     f"Merged `{initial_count:,}` rows into `{final_count:,}` rows "
                     f"({dups_removed:,} duplicates removed). Saved to `{target_path}`."
                 )
@@ -288,7 +288,7 @@ def render_dataset_combiner():
             csv_buf = io.StringIO()
             res_df.to_csv(csv_buf, index=False)
             st.download_button(
-                label=f"📥 Download {res_name}",
+                label=f"Download {res_name}",
                 data=csv_buf.getvalue(),
                 file_name=res_name,
                 mime="text/csv",
@@ -301,7 +301,7 @@ def render_dataset_combiner():
     # TAB 2: COMBINED DATASETS HISTORY (SORTED BY DATE/TIME DESCENDING)
     # =========================================================================
     with tab_history:
-        st.markdown("#### 📂 Combined Datasets Archive")
+        st.markdown("#### Combined Datasets Archive")
         st.caption(
             "Lists all merged and combined datasets stored in `mixed_dataset/mixed/`. "
             "Sorted chronologically with the **latest / newest at the top** and oldest at the bottom."
@@ -340,7 +340,7 @@ def render_dataset_combiner():
                 col_info, col_actions = st.columns([3, 1])
                 
                 with col_info:
-                    st.markdown(f"##### 📊 `{fname}`")
+                    st.markdown(f"##### `{fname}`")
                     st.markdown(f"**Modified:** `{dt_str}` &nbsp;|&nbsp; **Size:** `{size_str}` &nbsp;|&nbsp; **Path:** `{fpath}`")
                     
                     # Read sample summary
@@ -350,12 +350,12 @@ def render_dataset_combiner():
                         total_cols = len(sample_df.columns)
                         gt_col = next((c for c in ["GroundTruth", "label", "prediction"] if c in sample_df.columns), None)
                         
-                        badge_html = f"<span style='color: #a78bfa; font-size: 0.85rem;'>Rows: <b>{total_rows:,}</b> | Cols: <b>{total_cols}</b></span>"
+                        badge_html = f"<span style='color: #ffffff; font-size: 0.85rem;'>Rows: <b>{total_rows:,}</b> | Cols: <b>{total_cols}</b></span>"
                         if gt_col:
                             c1 = (sample_df[gt_col] == 1).sum()
                             c0 = (sample_df[gt_col] == 0).sum()
                             pct = (c1 / total_rows * 100.0) if total_rows > 0 else 0
-                            badge_html += f" &nbsp;|&nbsp; <span style='color: #10b981; font-size: 0.85rem;'>Keep (1): <b>{c1:,}</b> ({pct:.1f}%)</span> &nbsp;|&nbsp; <span style='color: #ef4444; font-size: 0.85rem;'>Discard (0): <b>{c0:,}</b></span>"
+                            badge_html += f" &nbsp;|&nbsp; <span style='color: #10b981; font-size: 0.85rem;'>Keep (1): <b>{c1:,}</b> ({pct:.1f}%)</span> &nbsp;|&nbsp; <span style='color: #71717a; font-size: 0.85rem;'>Discard (0): <b>{c0:,}</b></span>"
                             
                         st.markdown(badge_html, unsafe_allow_html=True)
                     except Exception as e:
@@ -366,7 +366,7 @@ def render_dataset_combiner():
                     try:
                         with open(fpath, "rb") as f_data:
                             st.download_button(
-                                label="📥 Download",
+                                label="Download",
                                 data=f_data.read(),
                                 file_name=fname,
                                 mime="text/csv",
@@ -377,7 +377,7 @@ def render_dataset_combiner():
                         pass
                         
                     # Preview button
-                    if st.button("👁️ Preview", key=f"prev_hist_{fname}", use_container_width=True):
+                    if st.button("Preview", key=f"prev_hist_{fname}", use_container_width=True):
                         st.session_state[f"show_preview_{fname}"] = not st.session_state.get(f"show_preview_{fname}", False)
                         st.rerun()
 

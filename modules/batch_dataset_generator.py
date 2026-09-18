@@ -77,13 +77,13 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
     st.dataframe(df.head(), use_container_width=True)
     
     # Checkbox for expandable full preview
-    show_full = st.checkbox("🔍 View Full Dataset Preview (All Rows & Columns)", key=f"chk_full_dataset_{crop_subdir}")
+    show_full = st.checkbox("View Full Dataset Preview (All Rows & Columns)", key=f"chk_full_dataset_{crop_subdir}")
     if show_full:
         st.dataframe(df, use_container_width=True)
         
     # Dataset Profiling Expandable Dashboard
     st.markdown("---")
-    with st.expander("📊 Dataset Profiling & Summary Statistics", expanded=False):
+    with st.expander("Dataset Profiling & Summary Statistics", expanded=False):
         st.write("Overview of the compiled machine learning dataset quality and descriptive metrics.")
         
         # 1. Basic Metrics
@@ -98,11 +98,11 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
             st.metric("Missing Values", f"{df.isnull().sum().sum():,}")
             
         # 2. Descriptive Statistics (df.describe)
-        st.markdown("##### 📈 Descriptive Statistics Summary (`df.describe()`)")
+        st.markdown("##### Descriptive Statistics Summary (`df.describe()`)")
         st.dataframe(df.describe(), use_container_width=True)
         
         # 3. Column Data Types & Non-Null Counts (df.info())
-        st.markdown("##### 📋 Column Information (`df.info()`)")
+        st.markdown("##### Column Information (`df.info()`)")
         import io
         buffer = io.StringIO()
         df.info(buf=buffer)
@@ -112,16 +112,16 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
         # 4. Detailed Null Summary (if any exist)
         null_counts = df.isnull().sum()
         if null_counts.sum() > 0:
-            st.markdown("##### ⚠️ Missing Values Per Column")
+            st.markdown("##### Missing Values Per Column")
             null_df = null_counts[null_counts > 0].to_frame("Missing Count")
             st.dataframe(null_df, use_container_width=True)
         
     # 2. Local File System Downloads Folder exporter (Creating Downloads/downloads/dataset_export_<subdir>...)
     st.markdown("---")
-    st.markdown("#### 📂 Local Downloads Directory Export")
+    st.markdown("#### Local Downloads Directory Export")
     st.write("Export all generated files to your system `Downloads` folder under the decoupled architecture.")
     
-    export_btn = st.button("💾 Export all files to Downloads/downloads/dataset_export/", use_container_width=True, type="secondary", key=f"btn_dl_export_{crop_subdir}")
+    export_btn = st.button("Export all files to Downloads/downloads/dataset_export/", use_container_width=True, type="secondary", key=f"btn_dl_export_{crop_subdir}")
     if export_btn:
         try:
             downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -152,13 +152,13 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
             
     # 3. Individual browser download triggers for standard environment compatibility
     st.markdown("---")
-    st.markdown("#### 📥 Standard Browser Downloads")
+    st.markdown("#### Standard Browser Downloads")
     
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
         csv_data = df.to_csv(index=False)
         st.download_button(
-            label="📥 Download Dataset CSV",
+            label="Download Dataset CSV",
             data=csv_data,
             file_name=f"candidate_frame_dataset_{crop_subdir}.csv",
             mime="text/csv",
@@ -168,7 +168,7 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
     with col_dl2:
         json_data = json.dumps(metadata_json, indent=4)
         st.download_button(
-            label="📥 Download Metadata JSON",
+            label="Download Metadata JSON",
             data=json_data,
             file_name=f"experiment_{crop_subdir}.json",
             mime="application/json",
@@ -177,13 +177,13 @@ def render_dataset_results(df: pd.DataFrame, metadata_json: dict, crop_subdir: s
         )
 
 def render_batch_dataset_generator():
-    st.markdown("### 📦 Batch Dataset Generator Tool")
+    st.markdown("### Batch Dataset Generator Tool")
     st.write("Extract pairwise and individual features chronologically across an entire cropped crop session to generate a consolidated ML training dataset.")
     
     # Mode selector
-    action_mode = st.radio("Choose Action:", ["🚀 Generate New Dataset", "📂 Browse Saved Dataset Sessions"], horizontal=True, key="dataset_action_mode")
+    action_mode = st.radio("Choose Action:", ["Generate New Dataset", "Browse Saved Dataset Sessions"], horizontal=True, key="dataset_action_mode")
     
-    if action_mode == "📂 Browse Saved Dataset Sessions":
+    if action_mode == "Browse Saved Dataset Sessions":
         root_datasets_dir = "generated_datasets"
         if not os.path.exists(root_datasets_dir) or not os.path.isdir(root_datasets_dir):
             st.info("No saved dataset sessions found. Run a batch generation first.")
@@ -300,7 +300,7 @@ def render_batch_dataset_generator():
     with col_cfg3:
         st.write(f"**SSIM / Text:** SSIM Window={config.ssim_win_size}, Text Kernel={config.text_kernel}")
         
-    start_btn = st.button("🚀 Start Batch Dataset Generation", use_container_width=True, type="primary")
+    start_btn = st.button("Start Batch Dataset Generation", use_container_width=True, type="primary")
     
     if start_btn:
         progress_bar = st.progress(0.0)
@@ -353,7 +353,7 @@ def render_batch_dataset_generator():
         for idx in range(total_pairs):
             fname_a = all_files[idx]
             fname_b = all_files[idx + 1]
-            status_text.text(f"Pair {idx+1}/{total_pairs}: {fname_a} ──► {fname_b}")
+            status_text.text(f"Pair {idx+1}/{total_pairs}: {fname_a} -> {fname_b}")
             
             # Assign GroundTruth based on whether Frame_B exists in candidate files
             ground_truth = 1 if fname_b in candidate_files else 0

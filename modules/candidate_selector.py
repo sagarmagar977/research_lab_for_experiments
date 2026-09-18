@@ -149,11 +149,11 @@ def render_candidate_selector():
     # --- Full Preview / Lightbox Mode ---
     if selected_inspect and selected_inspect in cropped_files:
         st.markdown("---")
-        st.markdown(f"### 🖼️ Full Preview: `{selected_inspect}`")
+        st.markdown(f"### Full Preview: `{selected_inspect}`")
         
         has_matching_orig = has_orig and os.path.exists(os.path.join(orig_dir, selected_inspect))
         if has_matching_orig:
-            show_orig = st.checkbox("🔍 Compare with Full Original Video Frame", value=False, key="chk_compare_orig")
+            show_orig = st.checkbox("Compare with Full Original Video Frame", value=False, key="chk_compare_orig")
             if show_orig:
                 col_pv1, col_pv2 = st.columns(2)
                 with col_pv1:
@@ -176,24 +176,24 @@ def render_candidate_selector():
         col_prev_f, col_star_f, col_next_f, col_close_f = st.columns(4)
         
         with col_prev_f:
-            if st.button("◀ Prev", key="btn_prev_frame", use_container_width=True):
+            if st.button("Prev", key="btn_prev_frame", use_container_width=True):
                 st.session_state[inspect_key] = cropped_files[prev_idx]
                 st.rerun()
         with col_star_f:
             if not is_marked:
-                if st.button("⭐ Mark Candidate", key="btn_toggle_star", use_container_width=True):
+                if st.button("Mark Candidate", key="btn_toggle_star", use_container_width=True):
                     shutil.copy2(os.path.join(crop_dir, selected_inspect), os.path.join(cand_dir, selected_inspect))
                     st.rerun()
             else:
-                if st.button("⭐ Unmark Candidate", key="btn_toggle_star", use_container_width=True):
+                if st.button("Unmark Candidate", key="btn_toggle_star", use_container_width=True):
                     os.remove(os.path.join(cand_dir, selected_inspect))
                     st.rerun()
         with col_next_f:
-            if st.button("▶ Next", key="btn_next_frame", use_container_width=True):
+            if st.button("Next", key="btn_next_frame", use_container_width=True):
                 st.session_state[inspect_key] = cropped_files[next_idx]
                 st.rerun()
         with col_close_f:
-            if st.button("❌ Close", key="btn_close_inspect", use_container_width=True):
+            if st.button("Close", key="btn_close_inspect", use_container_width=True):
                 st.session_state[inspect_key] = None
                 st.rerun()
                 
@@ -203,16 +203,16 @@ def render_candidate_selector():
             const doc = window.parent.document;
             const buttons = Array.from(doc.querySelectorAll('button'));
             if (e.key === 'ArrowLeft') {
-                const btn = buttons.find(b => b.textContent.includes('◀ Prev'));
+                const btn = buttons.find(b => b.textContent.trim() === 'Prev');
                 if (btn) { btn.click(); e.preventDefault(); }
             } else if (e.key === 'ArrowRight') {
-                const btn = buttons.find(b => b.textContent.includes('▶ Next'));
+                const btn = buttons.find(b => b.textContent.trim() === 'Next');
                 if (btn) { btn.click(); e.preventDefault(); }
             } else if (e.key.toLowerCase() === 's') {
-                const btn = buttons.find(b => b.textContent.includes('⭐ Mark') || b.textContent.includes('⭐ Unmark'));
+                const btn = buttons.find(b => b.textContent.includes('Mark Candidate') || b.textContent.includes('Unmark Candidate'));
                 if (btn) { btn.click(); e.preventDefault(); }
             } else if (e.key === 'Escape') {
-                const btn = buttons.find(b => b.textContent.includes('❌ Close'));
+                const btn = buttons.find(b => b.textContent.trim() === 'Close');
                 if (btn) { btn.click(); e.preventDefault(); }
             }
         }
@@ -256,7 +256,7 @@ def render_candidate_selector():
         )
 
     st.write("")
-    with st.expander("📦 Export Curated Dataset & Pipeline Actions", expanded=False):
+    with st.expander("Export Curated Dataset & Pipeline Actions", expanded=False):
         col_exp1, col_exp2, col_exp3 = st.columns(3)
         with col_exp1:
             if len(candidate_files) > 0:
@@ -266,23 +266,23 @@ def render_candidate_selector():
                 
                 if zip_key in st.session_state and st.session_state.get(cand_sig_key) == cand_signature:
                     st.download_button(
-                        label=f"💾 Download Curated ZIP ({len(candidate_files)} frames)",
+                        label=f"Download Curated ZIP ({len(candidate_files)} frames)",
                         data=st.session_state[zip_key],
                         file_name=f"{selected_session}_{selected_engine}_curated.zip",
                         mime="application/zip",
                         use_container_width=True
                     )
                 else:
-                    if st.button(f"📦 Prepare Curated ZIP ({len(candidate_files)} frames)", use_container_width=True, key="btn_prep_zip"):
+                    if st.button(f"Prepare Curated ZIP ({len(candidate_files)} frames)", use_container_width=True, key="btn_prep_zip"):
                         with st.spinner("Building curated ZIP archive..."):
                             zip_buf = create_curated_zip(cand_dir, orig_dir if has_orig else None, selected_session, selected_engine)
                             st.session_state[zip_key] = zip_buf.getvalue()
                             st.session_state[cand_sig_key] = cand_signature
                         st.rerun()
             else:
-                st.button("💾 Download Curated ZIP (0 frames)", disabled=True, use_container_width=True)
+                st.button("Download Curated ZIP (0 frames)", disabled=True, use_container_width=True)
         with col_exp2:
-            if st.button("📁 Export to Local `exports/` Folder", use_container_width=True):
+            if st.button("Export to Local `exports/` Folder", use_container_width=True):
                 export_base = os.path.join("exports", f"{selected_session}_{selected_engine}_curated")
                 out_crops = os.path.join(export_base, "candidate_crops")
                 out_orig = os.path.join(export_base, "candidate_original_frames")
@@ -303,7 +303,7 @@ def render_candidate_selector():
                 st.session_state["batch_dataset_croptype"] = "PP-OCRv3 Crops" if eng == "PP-OCRv3" else "PP-OCRv4 Crops"
 
             st.button(
-                "🚀 Send to Batch Dataset Generator",
+                "Send to Batch Dataset Generator",
                 use_container_width=True,
                 type="secondary",
                 on_click=goto_dataset_generator_cb,
@@ -313,7 +313,7 @@ def render_candidate_selector():
     st.markdown("---")
     
     # --- Tab Rendering Mode ---
-    tab_gallery, tab_showcase = st.tabs(["🖼️ Crop Gallery", "⭐ Showcase (Selected Candidates)"])
+    tab_gallery, tab_showcase = st.tabs(["Crop Gallery", "Showcase (Selected Candidates)"])
     limit = 24
     
     # --- Tab 1: Crop Gallery ---
@@ -343,27 +343,27 @@ def render_candidate_selector():
         full_paths = [os.path.join(crop_dir, f) for f in cropped_files]
         cached_cnt, total_cnt = get_cache_stats(full_paths)
         if cached_cnt >= total_cnt:
-            cache_info = f"<span style='color: #10b981; font-size: 0.82rem;'>⚡ <b>{cached_cnt:,} / {total_cnt:,}</b> frames pre-warmed in RAM (Instant Browsing Active)</span>"
+            cache_info = f"<span style='color: #10b981; font-size: 0.82rem;'><b>{cached_cnt:,} / {total_cnt:,}</b> frames pre-warmed in RAM (Instant Browsing Active)</span>"
         else:
-            cache_info = f"<span style='color: #94a3b8; font-size: 0.82rem;'>⚡ RAM Cache: <b>{cached_cnt:,} / {total_cnt:,}</b> ready (caching session in background...)</span>"
+            cache_info = f"<span style='color: #94a3b8; font-size: 0.82rem;'>RAM Cache: <b>{cached_cnt:,} / {total_cnt:,}</b> ready (caching session in background...)</span>"
 
         # Top Pagination Controls
         col_t_prev, col_t_info, col_t_next = st.columns([1, 2, 1])
         with col_t_prev:
-            if st.button("◀ Previous Page", key=f"t_prev_g_{selected_session}", disabled=(curr_page <= 1), use_container_width=True):
+            if st.button("Previous Page", key=f"t_prev_g_{selected_session}", disabled=(curr_page <= 1), use_container_width=True):
                 st.session_state[page_key] -= 1
                 st.rerun()
         with col_t_info:
             st.markdown(
                 f"<div style='text-align: center; padding-top: 4px;'>"
                 f"<div style='font-size: 0.95rem;'>Page <b>{curr_page}</b> of <b>{total_pages}</b> &nbsp;|&nbsp; "
-                f"Showing <b>{start_idx + 1}–{end_idx}</b> of <b>{total_cropped:,}</b> frames</div>"
+                f"Showing <b>{start_idx + 1}-{end_idx}</b> of <b>{total_cropped:,}</b> frames</div>"
                 f"<div style='margin-top: 3px;'>{cache_info}</div>"
                 f"</div>",
                 unsafe_allow_html=True
             )
         with col_t_next:
-            if st.button("Next Page ▶", key=f"t_next_g_{selected_session}", disabled=(curr_page >= total_pages), use_container_width=True):
+            if st.button("Next Page", key=f"t_next_g_{selected_session}", disabled=(curr_page >= total_pages), use_container_width=True):
                 st.session_state[page_key] += 1
                 st.rerun()
         
@@ -401,14 +401,14 @@ def render_candidate_selector():
                         
                         col_o, col_t = st.columns(2)
                         with col_o:
-                            if st.button("🔍 Open", key=f"open_img_g_{selected_session}_{selected_engine}_{fname}", use_container_width=True):
+                            if st.button("Open", key=f"open_img_g_{selected_session}_{selected_engine}_{fname}", use_container_width=True):
                                 st.session_state[inspect_key] = fname
                                 st.rerun()
                         with col_t:
                             if not is_marked:
-                                st.button("⭐ Mark", key=f"mark_g_{selected_session}_{selected_engine}_{fname}", on_click=mark_candidate, args=(fpath, cand_dir, fname), use_container_width=True)
+                                st.button("Mark", key=f"mark_g_{selected_session}_{selected_engine}_{fname}", on_click=mark_candidate, args=(fpath, cand_dir, fname), use_container_width=True)
                             else:
-                                st.button("✓ Selected", key=f"unmark_g_{selected_session}_{selected_engine}_{fname}", on_click=unmark_candidate, args=(cand_dir, fname), use_container_width=True)
+                                st.button("Selected", key=f"unmark_g_{selected_session}_{selected_engine}_{fname}", on_click=unmark_candidate, args=(cand_dir, fname), use_container_width=True)
                                     
         # Draw navigation controls at the bottom
         if total_pages > 1:
@@ -420,7 +420,7 @@ def render_candidate_selector():
                 
             with col_prev:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.button("◀ Prev", key=f"prev_pg_g_{selected_session}", disabled=(curr_page <= 1), on_click=change_g_page, args=(-1,), use_container_width=True)
+                st.button("Prev", key=f"prev_pg_g_{selected_session}", disabled=(curr_page <= 1), on_click=change_g_page, args=(-1,), use_container_width=True)
                     
             with col_select:
                 page_options = list(range(1, total_pages + 1))
@@ -432,7 +432,7 @@ def render_candidate_selector():
                     
             with col_next:
                 st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                st.button("Next ▶", key=f"next_pg_g_{selected_session}", disabled=(curr_page >= total_pages), on_click=change_g_page, args=(1,), use_container_width=True)
+                st.button("Next", key=f"next_pg_g_{selected_session}", disabled=(curr_page >= total_pages), on_click=change_g_page, args=(1,), use_container_width=True)
                                 
     # --- Tab 2: Showcase ---
     with tab_showcase:
@@ -462,19 +462,19 @@ def render_candidate_selector():
             if total_cand_pages > 1:
                 col_ct_prev, col_ct_info, col_ct_next = st.columns([1, 2, 1])
                 with col_ct_prev:
-                    if st.button("◀ Previous Page", key=f"ct_prev_g_{selected_session}", disabled=(curr_cand_page <= 1), use_container_width=True):
+                    if st.button("Previous Page", key=f"ct_prev_g_{selected_session}", disabled=(curr_cand_page <= 1), use_container_width=True):
                         st.session_state[cand_page_key] -= 1
                         st.rerun()
                 with col_ct_info:
                     st.markdown(
                         f"<div style='text-align: center; padding-top: 4px; font-size: 0.95rem;'>"
                         f"Candidate Page <b>{curr_cand_page}</b> of <b>{total_cand_pages}</b> &nbsp;|&nbsp; "
-                        f"Showing <b>{start_c_idx + 1}–{end_c_idx}</b> of <b>{total_cand:,}</b> candidates"
+                        f"Showing <b>{start_c_idx + 1}-{end_c_idx}</b> of <b>{total_cand:,}</b> candidates"
                         f"</div>",
                         unsafe_allow_html=True
                     )
                 with col_ct_next:
-                    if st.button("Next Page ▶", key=f"ct_next_g_{selected_session}", disabled=(curr_cand_page >= total_cand_pages), use_container_width=True):
+                    if st.button("Next Page", key=f"ct_next_g_{selected_session}", disabled=(curr_cand_page >= total_cand_pages), use_container_width=True):
                         st.session_state[cand_page_key] += 1
                         st.rerun()
             
@@ -501,12 +501,12 @@ def render_candidate_selector():
                             )
                             st.markdown(f"**{fname}**")
                             
-                            # Showcase buttons (🔍 Open & ⭐ Remove)
+                            # Showcase buttons (Open & Remove)
                             col_s_star, col_s_insp = st.columns(2)
                             with col_s_star:
-                                st.button("⭐ Remove", key=f"rm_show_{selected_session}_{selected_engine}_{fname}", on_click=remove_candidate, args=(cand_dir, fname), use_container_width=True)
+                                st.button("Remove", key=f"rm_show_{selected_session}_{selected_engine}_{fname}", on_click=remove_candidate, args=(cand_dir, fname), use_container_width=True)
                             with col_s_insp:
-                                if st.button("🔍 Open", key=f"open_show_{selected_session}_{selected_engine}_{fname}", use_container_width=True):
+                                if st.button("Open", key=f"open_show_{selected_session}_{selected_engine}_{fname}", use_container_width=True):
                                     st.session_state[inspect_key] = fname
                                     st.rerun()
                                     
@@ -520,7 +520,7 @@ def render_candidate_selector():
                     
                 with col_cprev:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    st.button("◀ Prev", key=f"prev_cpg_{selected_session}", disabled=(curr_cand_page <= 1), on_click=change_c_page, args=(-1,), use_container_width=True)
+                    st.button("Prev", key=f"prev_cpg_{selected_session}", disabled=(curr_cand_page <= 1), on_click=change_c_page, args=(-1,), use_container_width=True)
                         
                 with col_cselect:
                     cand_page_options = list(range(1, total_cand_pages + 1))
@@ -532,4 +532,4 @@ def render_candidate_selector():
                         
                 with col_cnext:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    st.button("Next ▶", key=f"next_cpg_{selected_session}", disabled=(curr_cand_page >= total_cand_pages), on_click=change_c_page, args=(1,), use_container_width=True)
+                    st.button("Next", key=f"next_cpg_{selected_session}", disabled=(curr_cand_page >= total_cand_pages), on_click=change_c_page, args=(1,), use_container_width=True)

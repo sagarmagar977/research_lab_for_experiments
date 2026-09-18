@@ -54,7 +54,7 @@ def render_batch_session_manager(engine_v3, engine_v4):
                 files = [f for f in os.listdir(local_dir_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
                 st.success(f"Found {len(files)} image files in directory.")
                 
-    start_btn = st.button("🚀 Start Batch Cropping Session", use_container_width=True)
+    start_btn = st.button("Start Batch Cropping Session", use_container_width=True)
     
     if start_btn:
         files_to_process = []
@@ -180,7 +180,7 @@ def render_batch_session_manager(engine_v3, engine_v4):
         st.success(f"Session saved under {session_path}")
         
     st.markdown("---")
-    st.markdown("### 📂 Session Browser & Side-by-Side Comparison")
+    st.markdown("### Session Browser & Side-by-Side Comparison")
     
     sessions_root = "sessions"
     if not os.path.exists(sessions_root) or not os.path.isdir(sessions_root):
@@ -219,8 +219,8 @@ def render_batch_session_manager(engine_v3, engine_v4):
             has_v3 = os.path.exists(os.path.join(v3_dir, selected_frame))
             has_v4 = os.path.exists(os.path.join(v4_dir, selected_frame))
             
-            st.write(f"PP-OCRv3 Crop: {'✅ Available' if has_v3 else '❌ Skipped/None'}")
-            st.write(f"PP-OCRv4 Crop: {'✅ Available' if has_v4 else '❌ Skipped/None'}")
+            st.write(f"PP-OCRv3 Crop: {'Available' if has_v3 else 'Skipped/None'}")
+            st.write(f"PP-OCRv4 Crop: {'Available' if has_v4 else 'Skipped/None'}")
             
         with col_det:
             st.markdown(f"#### Side-by-Side Comparison: `{selected_frame}`")

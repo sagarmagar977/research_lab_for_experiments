@@ -96,7 +96,6 @@ for k, v in saved_settings.items():
 # --- Theme and Styling Setup ---
 st.set_page_config(
     page_title="MY RESEARCH LAB",
-    page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -104,30 +103,49 @@ st.set_page_config(
 # Custom CSS for rich premium dark-mode styling
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.cdnfonts.com/css/sohne');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
-html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+@font-face {
+    font-family: 'Söhne';
+    src: local('Söhne'), local('Soehne'), local('Sohne-Buch'), local('Sohne-Kraft');
+}
+
+html, body, [class*="css"], [class*="st-"]:not([class*="material"]):not([data-testid*="Icon"]):not([class*="e1vmumty"]), .stApp, input, textarea, select {
+    font-family: 'Söhne', 'Soehne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+button:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]) {
+    font-family: 'Söhne', 'Soehne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Preserve Google Material Symbols & Streamlit DynamicIcon glyphs */
+.material-symbols-rounded,
+.material-symbols-outlined,
+.material-icons,
+[data-testid="stIconMaterial"],
+[data-testid*="Icon"],
+[class*="e1vmumty"] {
+    font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
 }
 
 code, pre, [class*="mono"] {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.88rem !important;
 }
 
 /* Header customization */
 .main-title {
-    background: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff;
     font-weight: 800;
-    font-size: 2.2rem;
+    font-size: 2.1rem;
+    letter-spacing: -0.03em;
     margin-bottom: 0.2rem;
 }
 .subtitle {
-    color: #9ca3af;
-    font-size: 1rem;
-    margin-bottom: 2rem;
+    color: #71717a;
+    font-size: 0.92rem;
+    margin-bottom: 1.5rem;
 }
 
 /* Metric card styles */
@@ -137,16 +155,16 @@ code, pre, [class*="mono"] {
     margin-bottom: 1rem;
 }
 .metric-card {
-    background-color: #1e1e2f;
-    border: 1px solid #2e2e4f;
-    border-radius: 12px;
+    background-color: #121214;
+    border: 1px solid #27272a;
+    border-radius: 8px;
     padding: 1rem;
     flex: 1;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 .metric-title {
-    font-size: 0.75rem;
-    color: #9ca3af;
+    font-size: 0.72rem;
+    color: #71717a;
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -155,40 +173,378 @@ code, pre, [class*="mono"] {
 .metric-value {
     font-size: 1.4rem;
     font-weight: 700;
-    color: #f3f4f6;
+    color: #ffffff;
 }
 .status-badge {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+    padding: 0.25rem 0.65rem;
+    border-radius: 4px;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 600;
 }
 .status-success {
-    background-color: rgba(16, 185, 129, 0.2);
+    background-color: rgba(16, 185, 129, 0.15);
     color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .status-warning {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background-color: #1f1f23;
+    color: #a1a1aa;
+    border: 1px solid #27272a;
 }
 
 /* Warnings and callouts */
 .stAlert {
-    border-radius: 12px !important;
+    border-radius: 8px !important;
+    background-color: #121214 !important;
+    border: 1px solid #27272a !important;
+    color: #f4f4f5 !important;
 }
 
 /* Title divider */
 hr {
     margin-top: 1rem;
     margin-bottom: 2rem;
-    border-color: #2e2e4f;
+    border-color: #27272a;
 }
+
 /* Hide Streamlit native image fullscreen expand button */
 button[title="View fullscreen"] {
     display: none !important;
 }
-[data-testid="StyledFullScreenButton"] {
+/* ============================================================
+   SIDEBAR TOGGLE BUTTON (Replace double_arrow_right with Modern Sidebar Icon)
+   ============================================================ */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    visibility: visible !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button,
+button[aria-label*="sidebar" i],
+button[aria-label*="Sidebar" i] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    background-color: #121214 !important;
+    border: 1px solid #27272a !important;
+    border-radius: 6px !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+    position: relative !important;
+    transition: all 0.15s ease !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="stSidebarCollapsedControl"] button:hover,
+[data-testid="collapsedControl"] button:hover,
+button[aria-label*="sidebar" i]:hover,
+button[aria-label*="Sidebar" i]:hover {
+    background-color: #1f1f23 !important;
+    border-color: #52525b !important;
+}
+
+/* Hide any raw text (e.g. 'double_arrow_right') or default inner elements */
+[data-testid="stSidebarCollapseButton"] button *,
+[data-testid="stSidebarCollapsedControl"] button *,
+[data-testid="collapsedControl"] button *,
+button[aria-label*="sidebar" i] *,
+button[aria-label*="Sidebar" i] * {
+    display: none !important;
+    visibility: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    color: transparent !important;
+    position: absolute !important;
+}
+
+/* Render Modern Sidebar Panel Icon */
+[data-testid="stSidebarCollapseButton"] button::after,
+[data-testid="stSidebarCollapsedControl"] button::after,
+[data-testid="collapsedControl"] button::after,
+button[aria-label*="sidebar" i]::after,
+button[aria-label*="Sidebar" i]::after {
+    content: "" !important;
+    display: block !important;
+    visibility: visible !important;
+    width: 18px !important;
+    height: 18px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d4d4d8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='4'/%3E%3Cline x1='9' x2='9' y1='3' y2='21'/%3E%3C/svg%3E") !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button:hover::after,
+[data-testid="stSidebarCollapsedControl"] button:hover::after,
+[data-testid="collapsedControl"] button:hover::after,
+button[aria-label*="sidebar" i]:hover::after,
+button[aria-label*="Sidebar" i]:hover::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='4'/%3E%3Cline x1='9' x2='9' y1='3' y2='21'/%3E%3C/svg%3E") !important;
+}
+
+/* ============================================================
+   FILE UPLOADER DROPZONE BUTTON (Eliminate duplicate/overlapping icon text)
+   ============================================================ */
+[data-testid="stFileUploaderDropzone"] button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+/* Hide the overflowing/broken icon ligature span that causes duplicate 'upload' text */
+[data-testid="stFileUploaderDropzone"] button [class*="e1vmumty"],
+[data-testid="stFileUploaderDropzone"] button [data-testid*="Icon"],
+[data-testid="stFileUploaderDropzone"] button svg,
+[data-testid="stFileUploaderDropzone"] button [data-has-shortcut] > *:first-child:not(:only-child),
+[data-testid="stFileUploaderDropzone"] button span:has(+ span) {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Ensure the upload button label text is clean and legible */
+[data-testid="stFileUploaderDropzone"] button span {
+    font-family: 'Söhne', 'Soehne', sans-serif !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+}
+
+/* ============================================================
+   GLOBAL HIGH-VISIBILITY LIGHT BLUE BUTTONS
+   ============================================================ */
+
+/* Primary Action Buttons (e.g. Start Generation, Run Inference, Compute Features) */
+button[data-testid="baseButton-primary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button),
+button[kind="primary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button),
+div:not([class*="st-key-main_tab_btn_"]) > button[kind="primary"],
+div:not([class*="st-key-main_tab_btn_"]) > div > button[kind="primary"],
+div:not([class*="st-key-main_tab_btn_"]) > div > div > button[kind="primary"] {
+    background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+    background-color: #0ea5e9 !important;
+    color: #ffffff !important;
+    border: 1px solid #38bdf8 !important;
+    border-radius: 7px !important;
+    font-weight: 600 !important;
+    font-size: 0.90rem !important;
+    letter-spacing: -0.01em !important;
+    box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35) !important;
+    transition: all 0.15s ease !important;
+}
+
+/* Ensure inner text elements in primary buttons are pure white and bold */
+button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button) *,
+button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button) * {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+}
+
+button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button):hover,
+button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button):hover,
+div:not([class*="st-key-main_tab_btn_"]) > button[kind="primary"]:hover,
+div:not([class*="st-key-main_tab_btn_"]) > div > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%) !important;
+    background-color: #0284c7 !important;
+    border-color: #7dd3fc !important;
+    box-shadow: 0 4px 18px rgba(56, 189, 248, 0.5) !important;
+    transform: translateY(-1px) !important;
+}
+
+button[data-testid="baseButton-primary"]:not(div[class*="st-key-main_tab_btn_"] button):active,
+button[kind="primary"]:not(div[class*="st-key-main_tab_btn_"] button):active {
+    transform: translateY(1px) !important;
+    box-shadow: 0 1px 4px rgba(14, 165, 233, 0.4) !important;
+}
+
+/* Secondary Action Buttons (excluding folder tabs, sidebar icon, and file uploader) */
+button[data-testid="baseButton-secondary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button),
+button[kind="secondary"]:not([data-testid*="Sidebar"]):not([data-testid*="sidebar"]):not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) {
+    background-color: #0c1322 !important;
+    border: 1px solid #1e3a5f !important;
+    border-radius: 7px !important;
+    color: #bae6fd !important;
+    font-weight: 500 !important;
+    font-size: 0.88rem !important;
+    letter-spacing: -0.01em !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+    transition: all 0.15s ease !important;
+}
+
+button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) *,
+button[kind="secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button) * {
+    color: #bae6fd !important;
+    font-weight: 500 !important;
+}
+
+button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button):hover,
+button[kind="secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button):hover {
+    background-color: #16243b !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.25) !important;
+    transform: translateY(-1px) !important;
+}
+
+button[data-testid="baseButton-secondary"]:not(div[class*="st-key-main_tab_btn_"] button):not([data-testid="stFileUploaderDropzone"] button):hover * {
+    color: #ffffff !important;
+}
+
+/* Specific styling for file uploader trigger button: crisp light blue outline */
+[data-testid="stFileUploaderDropzone"] button {
+    background-color: #0c1322 !important;
+    border: 1px solid #0284c7 !important;
+    color: #38bdf8 !important;
+    font-weight: 600 !important;
+}
+[data-testid="stFileUploaderDropzone"] button:hover {
+    background-color: #0369a1 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+}
+[data-testid="stFileUploaderDropzone"] button span {
+    color: inherit !important;
+}
+
+/* Candidate Selection buttons preserve green strictly */
+div[class*="st-key-unmark_g_"] button,
+div[class*="st-key-btn_toggle_star"] button,
+div[class*="st-key-rm_show_"] button {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid #10b981 !important;
+    color: #10b981 !important;
+}
+div[class*="st-key-unmark_g_"] button *,
+div[class*="st-key-btn_toggle_star"] button *,
+div[class*="st-key-rm_show_"] button * {
+    color: #10b981 !important;
+}
+
+/* ============================================================
+   MODERN FOLDER TABS (Task Manager Segmented Tab Bar)
+   ============================================================ */
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-main_tab_btn_"]) {
+    display: flex !important;
+    gap: 3px !important;
+    border-bottom: 1px solid #27272a !important;
+    padding-bottom: 0px !important;
+    margin-bottom: 1.5rem !important;
+    align-items: flex-end !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-main_tab_btn_"]) > [data-testid="stColumn"] {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+div[class*="st-key-main_tab_btn_"] button {
+    border-radius: 5px 5px 0 0 !important;
+    font-family: 'Söhne', 'Soehne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.01em !important;
+    padding: 7px 4px !important;
+    height: 38px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-bottom: -1px !important;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease !important;
+}
+
+/* Inactive Folder Tab (flat, rests on baseline) */
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"],
+div[class*="st-key-main_tab_btn_"] button[kind="secondary"] {
+    background-color: #0c0c0e !important;
+    color: #71717a !important;
+    border: 1px solid #27272a !important;
+    border-bottom: 1px solid #27272a !important;
+    box-shadow: none !important;
+}
+
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-secondary"]:hover,
+div[class*="st-key-main_tab_btn_"] button[kind="secondary"]:hover {
+    background-color: #18181b !important;
+    color: #ffffff !important;
+    border-color: #3f3f46 !important;
+}
+
+/* Active Folder Tab (elevated, light blue top border, seamlessly open to bottom) */
+div[class*="st-key-main_tab_btn_"] button[data-testid="baseButton-primary"],
+div[class*="st-key-main_tab_btn_"] button[kind="primary"] {
+    background-color: #18181b !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #3f3f46 !important;
+    border-top: 2px solid #38bdf8 !important;
+    border-bottom: 1px solid #18181b !important;
+    font-weight: 600 !important;
+    position: relative !important;
+    z-index: 10 !important;
+    height: 41px !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Style all native st.tabs to also follow the Folder Tab design */
+.stTabs [data-baseweb="tab-list"] {
+    border-bottom: 1px solid #27272a !important;
+    gap: 3px !important;
+    background-color: transparent !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: #0c0c0e !important;
+    border: 1px solid #27272a !important;
+    border-bottom: 1px solid #27272a !important;
+    border-radius: 5px 5px 0 0 !important;
+    color: #71717a !important;
+    font-family: 'Söhne', 'Soehne', sans-serif !important;
+    font-size: 0.82rem !important;
+    padding: 6px 14px !important;
+    margin-bottom: -1px !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: #18181b !important;
+    color: #ffffff !important;
+    border-color: #3f3f46 !important;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #18181b !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #3f3f46 !important;
+    border-top: 2px solid #38bdf8 !important;
+    border-bottom: 1px solid #18181b !important;
+    font-weight: 600 !important;
+    transform: translateY(-2px) !important;
+}
+.stTabs [data-baseweb="tab-highlight"] {
     display: none !important;
 }
 </style>
@@ -198,8 +554,8 @@ button[title="View fullscreen"] {
 if "_redirect_module" in st.session_state:
     st.session_state["selected_module"] = st.session_state.pop("_redirect_module")
 
-st.sidebar.markdown("<h2 style='color: #a78bfa; margin-bottom: 0px;'>Lab Module Selector</h2>", unsafe_allow_html=True)
-modules_options = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"]
+st.sidebar.markdown("<h2 style='color: #ffffff; margin-bottom: 0px;'>Lab Module Selector</h2>", unsafe_allow_html=True)
+modules_options = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner", "Level 2 Grouping Lab"]
 selected_module = st.sidebar.selectbox(
     "Select Lab Module",
     modules_options,
@@ -208,8 +564,8 @@ selected_module = st.sidebar.selectbox(
 )
 
 # --- Dynamic Sidebar Rendering Based on Selected Module ---
-if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"):
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-top: 20px; margin-bottom: 0px;'>OCR Model Tuning</h4>", unsafe_allow_html=True)
+if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner", "Level 2 Grouping Lab"):
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-top: 20px; margin-bottom: 0px;'>OCR Model Tuning</h4>", unsafe_allow_html=True)
     model_mode_options = ["PP-OCRv3 Det Only", "PP-OCRv4 Det Only", "Compare Both Side-by-Side"]
     model_mode = st.sidebar.radio(
         "Execution Engine / Mode",
@@ -227,7 +583,7 @@ if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generat
 
     st.sidebar.markdown("---")
 
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>Preprocessing & Dilation</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>Preprocessing & Dilation</h4>", unsafe_allow_html=True)
     preprocess_mode_options = ["Original (RGB)", "Grayscale (Monochrome)", "Adaptive Thresholding"]
     preprocess_mode = st.sidebar.selectbox(
         "Preprocessing Mode",
@@ -265,7 +621,7 @@ if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generat
 
     st.sidebar.markdown("---")
 
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>Boundary & Thresholds</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>Boundary & Thresholds</h4>", unsafe_allow_html=True)
     crop_mode_options = ["Union of All Regions", "Largest Region Only"]
     crop_mode = st.sidebar.radio(
         "Crop Boundary Mode",
@@ -282,7 +638,7 @@ if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generat
 
     st.sidebar.markdown("---")
 
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>OCR Engine Tuning</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>OCR Engine Tuning</h4>", unsafe_allow_html=True)
     ocr_preprocess_mode_options = ["Original (RGB)", "Grayscale (Monochrome)", "Adaptive Thresholding"]
     ocr_preprocess_mode = st.sidebar.selectbox(
         "OCR Preprocessing Mode",
@@ -307,7 +663,7 @@ if selected_module not in ("Pairwise Feature Vector Lab", "Batch Dataset Generat
 
 else:
     # Render Module 4 Sidebar configuration options
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-top: 20px; margin-bottom: 0px;'>Histogram Tuning</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-top: 20px; margin-bottom: 0px;'>Histogram Tuning</h4>", unsafe_allow_html=True)
     hist_bins_opts = [16, 32, 64, 128, 256]
     hist_bins = st.sidebar.selectbox(
         "Histogram Bins",
@@ -344,7 +700,7 @@ else:
     )
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>Edge Detection Tuning</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>Edge Detection Tuning</h4>", unsafe_allow_html=True)
     edge_blur_opts = ["None", "3x3", "5x5", "7x7"]
     edge_blur = st.sidebar.selectbox(
         "Gaussian Blur",
@@ -364,7 +720,7 @@ else:
     )
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>SSIM Tuning</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>SSIM Tuning</h4>", unsafe_allow_html=True)
     ssim_win_opts = [7, 9, 11, 13]
     ssim_win_size = st.sidebar.selectbox(
         "Window Size",
@@ -375,7 +731,7 @@ else:
     ssim_gaussian = st.sidebar.checkbox("Gaussian Weights", value=st.session_state["ssim_gaussian"], key="ssim_gaussian")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("<h4 style='color: #a78bfa; margin-bottom: 0px;'>Text Occupancy Tuning</h4>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>Text Occupancy Tuning</h4>", unsafe_allow_html=True)
     text_thresh = st.sidebar.slider("Binary Threshold", min_value=0, max_value=255, value=st.session_state["text_thresh"], key="text_thresh")
     
     text_kernel_opts = [3, 5, 7, 9]
@@ -436,27 +792,24 @@ st.markdown("<h1 class='main-title'>MY RESEARCH LAB FOR EXPERIMENTS</h1>", unsaf
 st.markdown("<p class='subtitle'>Experimental test harness and batch session manager evaluating DBNet text-region classifiers for digital slides and blackboard frames.</p>", unsafe_allow_html=True)
 
 # --- Top Navigation Tabs ---
-tab_cols = st.columns(7)
-modules_list = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner"]
-icons = ["🔍", "📦", "🎯", "📊", "⚙️", "🧠", "🔀"]
+tab_cols = st.columns(8, gap="small")
+modules_list = ["Single Frame Cropper", "Batch Crop Manager", "Candidate Frame Selector", "Pairwise Feature Vector Lab", "Batch Dataset Generator", "L1 Inference", "Dataset Combiner", "Level 2 Grouping Lab"]
 
 def select_module_cb(module_name):
     st.session_state["selected_module"] = module_name
 
-for idx, (name, icon) in enumerate(zip(modules_list, icons)):
+for idx, name in enumerate(modules_list):
     is_active = (selected_module == name)
     btn_type = "primary" if is_active else "secondary"
     with tab_cols[idx]:
         st.button(
-            f"{icon} {name}",
+            name,
             key=f"main_tab_btn_{name}",
             on_click=select_module_cb,
             args=(name,),
             use_container_width=True,
             type=btn_type
         )
-
-st.markdown("<hr style='margin-top: 0.5rem; margin-bottom: 1.5rem;'/>", unsafe_allow_html=True)
 
 # Route to respective modules
 if selected_module == "Single Frame Cropper":
@@ -474,3 +827,6 @@ elif selected_module == "L1 Inference":
     render_l1_inference()
 elif selected_module == "Dataset Combiner":
     render_dataset_combiner()
+elif selected_module == "Level 2 Grouping Lab":
+    from modules.l2_grouping_lab import render_l2_grouping_lab
+    render_l2_grouping_lab()
