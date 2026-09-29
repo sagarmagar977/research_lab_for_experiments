@@ -3,6 +3,7 @@ import io
 import re
 import json
 import datetime
+import numpy as np
 import pandas as pd
 import streamlit as st
 from PIL import Image
@@ -18,6 +19,8 @@ from modules.l2.feature_extractor import (
     save_features_to_cache
 )
 from modules.l2.grouping_engine import GroupingEngine
+from modules.l2.quality_cache import load_or_compute_quality_cache
+from modules.l2.keyframe_selector import KeyframeSelectorL2_2
 from modules.l2.reporting import (
     load_ground_truth_dataset,
     save_ground_truth_dataset,
@@ -30,7 +33,7 @@ from modules.l2.reporting import (
     get_level2_dir
 )
 
-def get_image_b64_src(path, max_dim=250):
+def get_image_b64_src(path, max_dim=720):
     b64 = get_cached_thumbnail_b64(path, max_dim=max_dim)
     if b64:
         return f"data:image/jpeg;base64,{b64}"
@@ -169,6 +172,7 @@ def render_l2_grouping_lab():
             candidate_paths.append(dest)
 
     active_session_dir = os.path.join(sessions_root, selected_session_name)
+    target_dir = os.path.dirname(candidate_paths[0]) if candidate_paths else ""
     
     # Header summary metrics
     first_f = os.path.basename(candidate_paths[0])
@@ -294,6 +298,9 @@ def render_l2_grouping_lab():
             w_layout_a2 = st.slider("Dir Layout Weight", 0.0, 2.0, 0.20, 0.05, key="w_layout_a2")
             use_layout_a2 = st.checkbox("Include Dir Layout", value=True, key="use_layout_a2", help="Disable for scrolling content (coding/terminal) to prevent false splits.")
             thresh_a2 = st.slider("Threshold ($\\tau_{A2}$)", 0.05, 0.95, 0.35, 0.01, key="tau_a2")
+            ssim_gate_a2 = st.slider("SSIM Consistency Gate", 0.000, 0.100, 0.025, 0.005, key="ssim_gate_a2", help="Vetoes OCR text-loss splits when visual canvas is static (D_ssim < gate). Suppresses handwriting flicker on static blackboards.")
+            use_bp_a2 = st.checkbox("Boilerplate Token Filter", value=True, key="use_bp_a2", help="Down-weights tokens appearing in >=70% of frames (static IDE chrome / recurring headers).")
+            use_bridge_a2 = st.checkbox("Transient Popup Veto (Lookahead)", value=True, key="use_bridge_a2", help="Vetoes false splits from 1-frame autocomplete and context menu popups.")
 
     with col_b2:
         st.markdown("<h4 style='color: #c084fc; font-size:1.05rem;'>B2: Multimodal (A2 + ViT)</h4>", unsafe_allow_html=True)
@@ -313,18 +320,36 @@ def render_l2_grouping_lab():
             w_vit_b2 = st.slider("ViT Weight", 0.0, 5.0, 0.5, 0.1, key="w_vit_b2", disabled=not has_vit_in_cache)
             use_layout_b2 = st.checkbox("Include Dir Layout", value=True, key="use_layout_b2")
             thresh_b2 = st.slider("Threshold ($\\tau_{B2}$)", 0.05, 0.95, 0.35, 0.01, key="tau_b2")
+            ssim_gate_b2 = st.slider("SSIM Consistency Gate", 0.000, 0.100, 0.025, 0.005, key="ssim_gate_b2", help="Vetoes splits when visual canvas is static (D_ssim < gate).")
+            use_bp_b2 = st.checkbox("Boilerplate Token Filter", value=True, key="use_bp_b2", help="Down-weights tokens appearing in >=70% of frames (static IDE chrome / recurring headers).")
+            use_bridge_b2 = st.checkbox("Transient Popup Veto (Lookahead)", value=True, key="use_bridge_b2", help="Vetoes false splits from 1-frame autocomplete and context menu popups.")
 
     # Execute Parallel Classifications
     config_a1 = {"ssim": w_ssim_a1, "ocr": w_ocr_a1, "layout": w_layout_a1, "threshold": thresh_a1}
     scores_a1, preds_a1 = GroupingEngine.run_approach_a1(transitions_list, config_a1, thresh_a1)
     groups_a1 = GroupingEngine.partition_groups(frames_list, preds_a1)
     
-    config_a2 = {"ssim": w_ssim_a2, "ocr": w_ocr_a2, "layout": w_layout_a2, "threshold": thresh_a2, "min_tokens": min_tokens_a2, "use_layout": use_layout_a2}
-    scores_a2, preds_a2, meta_a2 = GroupingEngine.run_approach_a2(transitions_list, config_a2, thresh_a2, min_tokens=min_tokens_a2, use_layout=use_layout_a2)
+    config_a2 = {
+        "ssim": w_ssim_a2, "ocr": w_ocr_a2, "layout": w_layout_a2, "threshold": thresh_a2,
+        "min_tokens": min_tokens_a2, "use_layout": use_layout_a2, "ssim_gate": ssim_gate_a2,
+        "use_boilerplate": use_bp_a2, "use_transient_bridge": use_bridge_a2
+    }
+    scores_a2, preds_a2, meta_a2 = GroupingEngine.run_approach_a2(
+        transitions_list, config_a2, thresh_a2, min_tokens=min_tokens_a2, use_layout=use_layout_a2,
+        ssim_gate_thresh=ssim_gate_a2, frames=frames_list, use_boilerplate=use_bp_a2, use_transient_bridge=use_bridge_a2
+    )
     groups_a2 = GroupingEngine.partition_groups(frames_list, preds_a2)
     
-    config_b2 = {"ssim": w_ssim_b2, "ocr": w_ocr_b2, "layout": w_layout_b2, "vit": w_vit_b2, "threshold": thresh_b2, "min_tokens": min_tokens_b2, "use_layout": use_layout_b2}
-    scores_b2, preds_b2, meta_b2 = GroupingEngine.run_approach_b2(transitions_list, config_b2, thresh_b2, min_tokens=min_tokens_b2, use_layout=use_layout_b2, vit_available=has_vit_in_cache)
+    config_b2 = {
+        "ssim": w_ssim_b2, "ocr": w_ocr_b2, "layout": w_layout_b2, "vit": w_vit_b2, "threshold": thresh_b2,
+        "min_tokens": min_tokens_b2, "use_layout": use_layout_b2, "ssim_gate": ssim_gate_b2,
+        "use_boilerplate": use_bp_b2, "use_transient_bridge": use_bridge_b2
+    }
+    scores_b2, preds_b2, meta_b2 = GroupingEngine.run_approach_b2(
+        transitions_list, config_b2, thresh_b2, min_tokens=min_tokens_b2, use_layout=use_layout_b2,
+        vit_available=has_vit_in_cache, ssim_gate_thresh=ssim_gate_b2, frames=frames_list,
+        use_boilerplate=use_bp_b2, use_transient_bridge=use_bridge_b2
+    )
     groups_b2 = GroupingEngine.partition_groups(frames_list, preds_b2)
     
     # Track 3-way Divergences
@@ -480,14 +505,14 @@ def render_l2_grouping_lab():
                 d_c1, d_c2, d_c3 = st.columns([1, 1, 1.5])
                 with d_c1:
                     st.caption(f"**Frame A (Fi):** `{fa_name}` ({div['timestamp_a']})")
-                    b64_a = get_image_b64_src(path_a)
+                    b64_a = get_image_b64_src(path_a, max_dim=720)
                     if b64_a:
-                        st.markdown(f"<img src='{b64_a}' style='max-width:100%; border-radius:8px; border:1px solid #3f3f46;'>", unsafe_allow_html=True)
+                        st.markdown(f"<img src='{b64_a}' style='width:100%; border-radius:8px; border:1px solid #3f3f46; display:block;'>", unsafe_allow_html=True)
                 with d_c2:
                     st.caption(f"**Frame B (Fi+1):** `{fb_name}` ({div['timestamp_b']})")
-                    b64_b = get_image_b64_src(path_b)
+                    b64_b = get_image_b64_src(path_b, max_dim=720)
                     if b64_b:
-                        st.markdown(f"<img src='{b64_b}' style='max-width:100%; border-radius:8px; border:1px solid #71717a;'>", unsafe_allow_html=True)
+                        st.markdown(f"<img src='{b64_b}' style='width:100%; border-radius:8px; border:1px solid #71717a; display:block;'>", unsafe_allow_html=True)
                 with d_c3:
                     st.markdown("**Three-Way Diagnostic Comparison:**")
                     st.write(f"- **A1 Baseline Score:** `{div['score_a1']:.4f}` ($\\tau_{{A1}} = {div['thresh_a1']:.2f}$) -> **Pred: `{div['pred_a1']}`**")
@@ -513,15 +538,78 @@ def render_l2_grouping_lab():
     # 5. TRIPLE GROUP BROWSER (VISUAL PARTITION INSPECTOR)
     # -------------------------------------------------------------
     st.markdown("#### 5. Triple Group Browser (Visual Inspection)")
-    tab_view_a1, tab_view_a2, tab_view_b2 = st.tabs([
-        f"A1 Baseline Groups ({len(groups_a1)})",
-        f"A2 Asymmetric Groups ({len(groups_a2)})",
-        f"B2 Multimodal Groups ({len(groups_b2)})"
-    ])
     
-    def render_group_cards(groups, badge_color):
-        ROW_SIZE = 8
-        for g in groups:
+    col_sel, col_opt = st.columns([2.5, 1])
+    with col_sel:
+        selected_view = st.radio(
+            "Select Formulation to Inspect",
+            [
+                f"A1 Baseline Groups ({len(groups_a1)})",
+                f"A2 Asymmetric Groups ({len(groups_a2)})",
+                f"B2 Multimodal Groups ({len(groups_b2)})"
+            ],
+            index=1,
+            horizontal=True,
+            key="l2_group_browser_selection"
+        )
+    
+    if "A1 Baseline" in selected_view:
+        active_groups = groups_a1
+        active_color = "#94a3b8"
+    elif "A2 Asymmetric" in selected_view:
+        active_groups = groups_a2
+        active_color = "#38bdf8"
+    else:
+        active_groups = groups_b2
+        active_color = "#c084fc"
+
+    with col_opt:
+        if len(active_groups) > 10:
+            batch_size = 8
+            num_batches = (len(active_groups) + batch_size - 1) // batch_size
+            batch_options = ["Show All Groups"] + [
+                f"Groups {b * batch_size + 1} – {min((b + 1) * batch_size, len(active_groups))}"
+                for b in range(num_batches)
+            ]
+            selected_batch = st.selectbox("Group Range", batch_options, index=0, key="l2_group_batch_sel")
+        else:
+            selected_batch = "Show All Groups"
+
+    inspect_key_l2_1 = f"l2_1_inspect_{selected_session_name}"
+    if inspect_key_l2_1 not in st.session_state:
+        st.session_state[inspect_key_l2_1] = None
+
+    selected_inspect_l2_1 = st.session_state[inspect_key_l2_1]
+    if selected_inspect_l2_1:
+        ins_path = os.path.join(target_dir, selected_inspect_l2_1)
+        if os.path.exists(ins_path):
+            st.markdown(
+                f"<div style='background-color:#18181b; padding:10px 16px; border-radius:10px; border:2px solid {active_color}; margin-top:8px; margin-bottom:12px;'>"
+                f"<b style='font-size:1.05rem; color:{active_color};'>Full Resolution Native Inspection: <code>{selected_inspect_l2_1}</code></b>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.image(Image.open(ins_path), use_container_width=True)
+            if st.button("✕ Close Full Preview", key="btn_close_l2_1_inspect", use_container_width=True):
+                st.session_state[inspect_key_l2_1] = None
+                st.rerun()
+            st.markdown("---")
+
+    col_layout_l2_1 = st.radio("Gallery Columns per Row", [3, 4, 6], index=1, horizontal=True, key=f"l2_1_col_layout_{selected_session_name}")
+
+    def render_group_cards(groups, badge_color, batch_filter="Show All Groups", cols_per_row=4):
+        ROW_SIZE = cols_per_row
+        if batch_filter != "Show All Groups" and " – " in batch_filter:
+            try:
+                parts = batch_filter.replace("Groups ", "").split(" – ")
+                start_gid, end_gid = int(parts[0]), int(parts[1])
+                display_groups = [g for g in groups if start_gid <= g["group_id"] <= end_gid]
+            except Exception:
+                display_groups = groups
+        else:
+            display_groups = groups
+
+        for g in display_groups:
             with st.container():
                 st.markdown(
                     f"<div style='background-color:#141414; padding:10px 15px; border-radius:8px; border:1px solid #27272a; border-left:4px solid {badge_color}; margin-top:14px; margin-bottom:10px;'>"
@@ -538,26 +626,22 @@ def render_l2_grouping_lab():
                     cols = st.columns(ROW_SIZE)
                     for f_idx, fr in enumerate(chunk):
                         with cols[f_idx]:
-                            fr_path = os.path.join(target_dir, fr["filename"])
-                            b64 = get_image_b64_src(fr_path, max_dim=220)
+                            fr_name = fr["filename"]
+                            fr_path = os.path.join(target_dir, fr_name)
+                            b64 = get_image_b64_src(fr_path, max_dim=720)
                             if b64:
                                 st.markdown(
-                                    f"<div style='margin-bottom:8px;'>"
-                                    f"<img src='{b64}' style='width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:4px; border:1px solid #27272a; display:block;' loading='lazy'>"
-                                    f"<div style='font-size:0.70rem; color:#a1a1aa; line-height:1.25; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;' title='{fr['filename']} ({fr['timestamp_str']})'>"
-                                    f"<span style='color:#ffffff; font-weight:600;'>{fr['timestamp_str']}</span><br/>"
-                                    f"<span style='font-family:monospace; font-size:0.68rem;'>{fr['filename']}</span>"
-                                    f"</div>"
+                                    f"<div style='border: 1px solid #27272a; border-radius: 8px; padding: 6px; background-color: #18181b; margin-bottom: 6px;'>"
+                                    f"<img src='{b64}' style='width: 100%; border-radius: 6px; display: block;' loading='lazy'>"
                                     f"</div>",
                                     unsafe_allow_html=True
                                 )
+                                st.caption(f"**{fr['timestamp_str']}** | `{fr_name}`")
+                                if st.button("Open", key=f"btn_open_l21_g_{g['group_id']}_{fr_name}_{row_start}_{f_idx}", use_container_width=True):
+                                    st.session_state[inspect_key_l2_1] = fr_name
+                                    st.rerun()
 
-    with tab_view_a1:
-        render_group_cards(groups_a1, "#94a3b8")
-    with tab_view_a2:
-        render_group_cards(groups_a2, "#38bdf8")
-    with tab_view_b2:
-        render_group_cards(groups_b2, "#c084fc")
+    render_group_cards(active_groups, active_color, selected_batch, cols_per_row=col_layout_l2_1)
 
     st.markdown("---")
 
@@ -622,14 +706,14 @@ def render_l2_grouping_lab():
         
         c_im1, c_im2, c_ctrl = st.columns([1.2, 1.2, 2])
         with c_im1:
-            b64_a = get_image_b64_src(path_a, max_dim=200)
+            b64_a = get_image_b64_src(path_a, max_dim=720)
             if b64_a:
-                st.markdown(f"<img src='{b64_a}' style='width:100%; border-radius:6px;'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{b64_a}' style='width:100%; border-radius:6px; display:block;'>", unsafe_allow_html=True)
             st.caption(f"`{fa_name}` ({t['timestamp_a']})")
         with c_im2:
-            b64_b = get_image_b64_src(path_b, max_dim=200)
+            b64_b = get_image_b64_src(path_b, max_dim=720)
             if b64_b:
-                st.markdown(f"<img src='{b64_b}' style='width:100%; border-radius:6px;'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{b64_b}' style='width:100%; border-radius:6px; display:block;'>", unsafe_allow_html=True)
             st.caption(f"`{fb_name}` ({t['timestamp_b']})")
         with c_ctrl:
             st.caption(f"**Model Suggestions:** A1: `{pa1}` (`{scores_a1[i]:.2f}`) | A2: `{pa2}` (`{scores_a2[i]:.2f}`) | B2: `{pb2}` (`{scores_b2[i]:.2f}`)")
@@ -732,3 +816,301 @@ def render_l2_grouping_lab():
             use_container_width=True
         )
         st.markdown(report_text)
+
+    st.markdown("---")
+
+    # -------------------------------------------------------------
+    # 8. LEVEL 2.2 — MINIMAL INFORMATIVE KEYFRAME SELECTION STUDIO
+    # -------------------------------------------------------------
+    st.markdown("#### 8. Level 2.2 — Minimal Informative Keyframe Selection Studio")
+    st.write(
+        "Selects the minimal subset of culmination frames within each Level 2.1 group that maximally preserves "
+        "instructional content. Evaluates six controlled ablation modes: "
+        "**A (Unique Lexical Set)**, **B (Lexical Multiset)**, **C (Multiset + Spatial)**, "
+        "**D (Quality-Steered)**, **E1 (Quality + ViT Diversity)**, and **E2 (Quality + ViT + Event Evidence)**."
+    )
+
+    col_k1, col_k2, col_k3 = st.columns([1.2, 1.2, 1.2])
+
+    with col_k1:
+        st.markdown("**1. Source Partition**")
+        source_part_name = st.radio(
+            "Select Level 2.1 Group Source",
+            ["A2 Asymmetric Groups", "B2 Multimodal Groups", "A1 Baseline Groups"],
+            index=0,
+            key="l2_2_source_partition"
+        )
+        if "A1" in source_part_name:
+            source_groups = groups_a1
+        elif "A2" in source_part_name:
+            source_groups = groups_a2
+        else:
+            source_groups = groups_b2
+
+    with col_k2:
+        st.markdown("**2. Selection Mode**")
+        chosen_mode_raw = st.selectbox(
+            "Evaluation Formulation",
+            [
+                "D: Multiset + Spatial + Quality (Default)",
+                "A: Unique Lexical Set",
+                "B: Lexical Multiset",
+                "C: Multiset + Spatial (16x16)",
+                "E1: D + Gated ViT Diversity",
+                "E2: D + Gated ViT + Event Evidence",
+                "Compare All Modes Side-by-Side (A-E2)"
+            ],
+            index=0,
+            key="l2_2_mode_pick"
+        )
+        mode_code = chosen_mode_raw.split(":")[0].strip()
+
+    with col_k3:
+        st.markdown("**3. Target Scope**")
+        group_opts = ["Batch All Groups"] + [
+            f"Group {g['group_id']} ({g['frame_count']} frames, {g['start_timestamp']} -> {g['end_timestamp']})"
+            for g in source_groups
+        ]
+        selected_scope = st.selectbox("Select Group", group_opts, index=1 if len(group_opts) > 1 else 0, key="l2_2_scope_pick")
+
+    # Hyperparameter Drawer
+    with st.expander("⚙️ Level 2.2 Hyperparameters & Experimental Settings", expanded=False):
+        hp_col1, hp_col2, hp_col3 = st.columns(3)
+        with hp_col1:
+            tau_cov_val = st.slider("Target Coverage ($\\tau_{cov}$)", 0.70, 0.99, 0.95, 0.01, key="l2_2_tau_cov", help="Stopping target for unweighted pedagogical coverage.")
+            eps_info_val = st.slider("Info Eligibility Floor ($\\epsilon_{info}$)", 0.005, 0.050, 0.020, 0.005, key="l2_2_eps_info", help="Minimum raw unweighted information gain required for candidate eligibility.")
+            q_min_val = st.slider("Quality Lower Bound ($q_{min}$)", 0.10, 0.40, 0.20, 0.05, key="l2_2_q_min", help="Session-normalized quality floor. Steers selection order without disqualifying unique content.")
+        with hp_col2:
+            w_sp_val = st.slider("Spatial Weight ($w_{spatial}$)", 0.00, 0.30, 0.15, 0.05, key="l2_2_w_sp", help="Weight of 16x16 bounding box occupancy in C/D/E1/E2. Reverts to 0 in A/B.")
+            w_vit_val = st.slider("ViT Bonus Weight ($w_{vit}$)", 0.00, 0.50, 0.20, 0.05, key="l2_2_w_vit", help="Multiplicative visual diversity factor in E1/E2. Strictly gated by positive raw gain.")
+            w_ev_val = st.slider("Event Bonus Weight ($w_{event}$)", 0.00, 0.50, 0.20, 0.05, key="l2_2_w_ev", help="Multiplicative intra-group transition bonus in E2. Strictly gated by positive raw gain.")
+        with hp_col3:
+            tau_ev_ocr = st.slider("Event OCR Threshold ($\\tau_{ocr}$)", 0.10, 0.50, 0.30, 0.05, key="l2_2_tau_ev_ocr", help="Minimum cached OCR loss to trigger intra-group event.")
+            tau_ev_ssim = st.slider("Event SSIM Gate ($\\tau_{ssim}$)", 0.005, 0.050, 0.025, 0.005, key="l2_2_tau_ev_ssim", help="Minimum visual difference to confirm non-flicker canvas change.")
+            ev_dir = st.radio("Event Direction", ["pre", "post"], index=0, horizontal=True, key="l2_2_ev_dir", help="'pre' = culmination before wipe; 'post' = inception after wipe.")
+
+    # Lazy-load session quality cache
+    all_frame_names = [f["filename"] for f in frames_list]
+    q_cache_data = load_or_compute_quality_cache(active_session_dir, all_frame_names, q_min=q_min_val)
+    quality_lookup = {fn: rec["quality_score"] for fn, rec in q_cache_data.get("frames", {}).items()}
+
+    # Cached pairwise transitions map
+    trans_lookup = {(t["frame_a"], t["frame_b"]): t for t in transitions_list}
+
+    # Action trigger
+    run_l2_2 = st.button("🚀 Run Level 2.2 Keyframe Selection", type="primary", use_container_width=True)
+
+    if run_l2_2 or st.session_state.get("_l2_2_auto_run", False):
+        st.session_state["_l2_2_auto_run"] = True
+
+        if not source_groups:
+            st.warning("No groups found in the selected partition.")
+            return
+
+        # Case 1: Compare All Modes Side-by-Side on a Single Group
+        if "Compare All Modes" in chosen_mode_raw:
+            if selected_scope == "Batch All Groups":
+                target_group = source_groups[0]
+                st.info(f"Comparing all modes on Group 1 ({target_group['frame_count']} frames).")
+            else:
+                gid = int(selected_scope.split()[1])
+                target_group = next((g for g in source_groups if g["group_id"] == gid), source_groups[0])
+
+            modes_list = ["A", "B", "C", "D", "E1", "E2"]
+            comp_rows = []
+
+            for m in modes_list:
+                res_m = KeyframeSelectorL2_2.select_group_keyframes(
+                    group_dict=target_group,
+                    mode=m,
+                    tau_coverage=tau_cov_val,
+                    epsilon_info=eps_info_val,
+                    w_spatial=w_sp_val,
+                    w_vit=w_vit_val,
+                    w_event=w_ev_val,
+                    tau_event_ocr=tau_ev_ocr,
+                    tau_event_ssim=tau_ev_ssim,
+                    event_direction=ev_dir,
+                    vit_embeddings=vit_dict,
+                    cached_transitions_map=trans_lookup,
+                    quality_map=quality_lookup
+                )
+                comp_rows.append({
+                    "Mode": m,
+                    "Description": {
+                        "A": "Unique Lexical Set",
+                        "B": "Lexical Multiset",
+                        "C": "Multiset + Spatial (16x16)",
+                        "D": "Quality-Steered",
+                        "E1": "D + Gated ViT Diversity",
+                        "E2": "D + Gated ViT + Event Evidence"
+                    }[m],
+                    "Selected Count": res_m["selected_count"],
+                    "Input Count": res_m["input_frame_count"],
+                    "Compression": f"{(1.0 - res_m['compression_ratio']) * 100:.1f}%",
+                    "Final Coverage": f"{res_m['final_coverage'] * 100:.1f}%",
+                    "Stopping Reason": res_m["stopping_reason"],
+                    "Selected Keyframes": ", ".join(res_m["selected_filenames"])
+                })
+
+            st.markdown(f"##### Comparative Ablation on Group {target_group['group_id']} ({target_group['frame_count']} frames)")
+            df_comp = pd.DataFrame(comp_rows)
+            st.dataframe(df_comp, use_container_width=True)
+
+        # Case 2: Batch All Groups for a Specific Mode
+        elif selected_scope == "Batch All Groups":
+            batch_results = KeyframeSelectorL2_2.run_all_groups(
+                groups=source_groups,
+                mode=mode_code,
+                tau_coverage=tau_cov_val,
+                epsilon_info=eps_info_val,
+                w_spatial=w_sp_val,
+                w_vit=w_vit_val,
+                w_event=w_ev_val,
+                tau_event_ocr=tau_ev_ocr,
+                tau_event_ssim=tau_ev_ssim,
+                event_direction=ev_dir,
+                vit_embeddings=vit_dict,
+                cached_transitions_map=trans_lookup,
+                quality_map=quality_lookup
+            )
+
+            tot_input = sum(r["input_frame_count"] for r in batch_results)
+            tot_selected = sum(r["selected_count"] for r in batch_results)
+            avg_cov = np.mean([r["final_coverage"] for r in batch_results]) if batch_results else 0.0
+            overall_comp = (1.0 - (tot_selected / max(tot_input, 1))) * 100
+
+            bm1, bm2, bm3, bm4 = st.columns(4)
+            with bm1:
+                st.metric("Total Candidate Frames", tot_input)
+            with bm2:
+                st.metric("Selected Keyframes", tot_selected, delta=f"-{tot_input - tot_selected} reduced")
+            with bm3:
+                st.metric("Overall Compression", f"{overall_comp:.1f}%")
+            with bm4:
+                st.metric("Mean Pedagogical Coverage", f"{avg_cov * 100:.1f}%")
+
+            batch_table = [
+                {
+                    "Group ID": r["group_id"],
+                    "Frames (In -> Out)": f"{r['input_frame_count']} -> {r['selected_count']}",
+                    "Coverage": f"{r['final_coverage'] * 100:.1f}%",
+                    "Stopping Reason": r["stopping_reason"],
+                    "Selected Keyframes": ", ".join(r["selected_filenames"]),
+                    "Timestamps": ", ".join(r["selected_timestamps"])
+                }
+                for r in batch_results
+            ]
+            st.dataframe(pd.DataFrame(batch_table), use_container_width=True)
+
+            # JSON export
+            l2_2_export_payload = {
+                "session_name": selected_session_name,
+                "source_partition": source_part_name,
+                "mode": mode_code,
+                "parameters": {
+                    "tau_coverage": tau_cov_val,
+                    "epsilon_info": eps_info_val,
+                    "w_spatial": w_sp_val,
+                    "w_vit": w_vit_val,
+                    "w_event": w_ev_val,
+                    "tau_event_ocr": tau_ev_ocr,
+                    "tau_event_ssim": tau_ev_ssim,
+                    "event_direction": ev_dir,
+                    "q_min": q_min_val
+                },
+                "summary": {
+                    "total_input_frames": tot_input,
+                    "total_selected_keyframes": tot_selected,
+                    "overall_compression_percent": round(overall_comp, 2),
+                    "mean_coverage": round(float(avg_cov), 4)
+                },
+                "groups": batch_results
+            }
+            json_export_str = json.dumps(l2_2_export_payload, indent=2)
+            st.download_button(
+                "📥 Download Level 2.2 Keyframe Selection JSON (l2_2_selection.json)",
+                data=json_export_str,
+                file_name=f"{selected_session_name}_l2_2_selection_{mode_code}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+
+        # Case 3: Single Group Detailed Visual Inspection
+        else:
+            gid = int(selected_scope.split()[1])
+            target_group = next((g for g in source_groups if g["group_id"] == gid), source_groups[0])
+
+            res = KeyframeSelectorL2_2.select_group_keyframes(
+                group_dict=target_group,
+                mode=mode_code,
+                tau_coverage=tau_cov_val,
+                epsilon_info=eps_info_val,
+                w_spatial=w_sp_val,
+                w_vit=w_vit_val,
+                w_event=w_ev_val,
+                tau_event_ocr=tau_ev_ocr,
+                tau_event_ssim=tau_ev_ssim,
+                event_direction=ev_dir,
+                vit_embeddings=vit_dict,
+                cached_transitions_map=trans_lookup,
+                quality_map=quality_lookup
+            )
+
+            # Scorecard metrics
+            sm1, sm2, sm3, sm4 = st.columns(4)
+            with sm1:
+                st.metric("Input Frames", res["input_frame_count"])
+            with sm2:
+                st.metric("Selected Keyframes", res["selected_count"], delta=f"-{res['input_frame_count'] - res['selected_count']} pruned")
+            with sm3:
+                st.metric("Compression Ratio", f"{(1.0 - res['compression_ratio']) * 100:.1f}%")
+            with sm4:
+                st.metric("Final Pedagogical Coverage", f"{res['final_coverage'] * 100:.1f}%", help=f"Lexical: {res['final_lexical_coverage']*100:.1f}%, Spatial: {res['final_spatial_coverage']*100:.1f}%")
+
+            st.caption(f"**Stopping Reason:** `{res['stopping_reason']}` | **Selected Formulations:** `{res['mode']}`")
+
+            # Visual Sequence Gallery
+            st.markdown("##### Chronological Group Sequence (Selected Keyframes Highlighted)")
+            selected_names_set = set(res["selected_filenames"])
+            ROW_SIZE = 4
+            all_g_frames = target_group.get("frames", [])
+
+            for row_start in range(0, len(all_g_frames), ROW_SIZE):
+                chunk = all_g_frames[row_start : row_start + ROW_SIZE]
+                cols = st.columns(ROW_SIZE)
+                for f_idx, fr in enumerate(chunk):
+                    with cols[f_idx]:
+                        fr_name = fr["filename"]
+                        fr_path = os.path.join(target_dir, fr_name)
+                        b64 = get_image_b64_src(fr_path, max_dim=720)
+                        is_sel = fr_name in selected_names_set
+
+                        if is_sel:
+                            sel_idx = res["selected_filenames"].index(fr_name) + 1
+                            border_style = "2px solid #10b981"
+                            bg_color = "rgba(16, 185, 129, 0.05)"
+                            badge_html = f"<div style='background-color:#059669; color:#ffffff; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:3px;'>KEYFRAME #{sel_idx}</div>"
+                        else:
+                            border_style = "1px solid #27272a"
+                            bg_color = "transparent"
+                            badge_html = "<div style='color:#71717a; font-size:0.65rem; padding:2px 6px; display:inline-block; margin-bottom:3px;'>Pruned</div>"
+
+                        if b64:
+                            st.markdown(
+                                f"<div style='border: {border_style}; border-radius: 8px; padding: 6px; background-color: {bg_color}; margin-bottom: 6px;'>"
+                                f"{badge_html}"
+                                f"<img src='{b64}' style='width: 100%; border-radius: 6px; display: block;' loading='lazy'>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            st.caption(f"**{fr.get('timestamp_str', '')}** | `{fr_name}`")
+                            if st.button("Open", key=f"btn_open_l21_sel_{fr_name}_{row_start}_{f_idx}", use_container_width=True):
+                                st.session_state[inspect_key_l2_1] = fr_name
+                                st.rerun()
+
+            # Detailed Candidate Audit Trail
+            if res.get("audit_trail"):
+                with st.expander("🔍 Selection Decision Audit Trail (Component Scores)", expanded=True):
+                    df_audit = pd.DataFrame(res["audit_trail"])
+                    st.dataframe(df_audit, use_container_width=True)

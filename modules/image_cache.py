@@ -23,15 +23,15 @@ def clear_image_cache():
         _IMAGE_CACHE.clear()
         _ACTIVE_WORKERS.clear()
 
-def _create_thumbnail_b64(path, max_dim=400):
-    """Creates a lightweight JPEG thumbnail base64 string from an image path."""
+def _create_thumbnail_b64(path, max_dim=720):
+    """Creates a high-definition JPEG thumbnail base64 string from an image path."""
     try:
         with Image.open(path) as img:
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
             img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=75, optimize=True)
+            img.save(buf, format="JPEG", quality=92, optimize=True)
             return base64.b64encode(buf.getvalue()).decode()
     except Exception:
         try:
@@ -40,15 +40,15 @@ def _create_thumbnail_b64(path, max_dim=400):
         except Exception:
             return ""
 
-def get_cached_thumbnail_b64(path, max_dim=400):
+def get_cached_thumbnail_b64(path, max_dim=720):
     """
     Retrieves thumbnail from in-memory cache or computes it immediately.
-    Strictly keyed by absolute canonical path to prevent cross-session filename collisions.
+    Keyed by absolute canonical path and dimension to prevent cross-resolution collisions.
     """
     if not path:
         return ""
         
-    key = _norm_path(path)
+    key = f"{_norm_path(path)}@{max_dim}"
     if key in _IMAGE_CACHE:
         return _IMAGE_CACHE[key]
         

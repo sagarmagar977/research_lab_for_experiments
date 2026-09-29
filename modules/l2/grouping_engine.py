@@ -41,28 +41,63 @@ class GroupingEngine:
     run_approach_a = run_approach_a1
 
     @staticmethod
-    def run_approach_a2(transitions, weights, threshold, min_tokens=3, use_layout=True):
+    def detect_boilerplate_tokens(frames, freq_threshold=0.70):
+        """
+        Identifies session-level boilerplate tokens appearing in >= freq_threshold of frames
+        (e.g., static IDE window headers, terminal paths, or recurring slide banners).
+        """
+        if not frames:
+            return set()
+        from collections import Counter
+        doc_freq = Counter()
+        for f in frames:
+            toks = set(t.lower() for t in f.get("tokens", []))
+            doc_freq.update(toks)
+        n_frames = len(frames)
+        return {tok for tok, count in doc_freq.items() if (count / max(n_frames, 1)) >= freq_threshold}
+
+    @staticmethod
+    def run_approach_a2(transitions, weights, threshold, min_tokens=3, use_layout=True, ssim_gate_thresh=0.0,
+                        frames=None, use_boilerplate=True, boilerplate_thresh=0.70, use_transient_bridge=True):
         """
         A2 — Improved Asymmetric Preservation:
         Replaces symmetric OCR Jaccard with directional OCR Information Preservation / Containment.
         Uses dynamic weight renormalization when OCR or layout signals are invalid or disabled.
+        Optional SSIM Consistency Gate (ssim_gate_thresh): Vetoes splits if visual canvas is static (D_ssim < gate).
+        Optional Boilerplate Filter: Down-weights static IDE chrome / recurring banners.
+        Optional 3-Frame Lookahead Bridge: Vetoes false splits caused by transient autocomplete / UI popups.
         """
         w_ssim = float(weights.get("ssim", 1.0))
         w_ocr = float(weights.get("ocr", 1.0))
         w_layout = float(weights.get("layout", 1.0)) if use_layout else 0.0
+        gate_thresh = float(ssim_gate_thresh if ssim_gate_thresh > 0.0 else weights.get("ssim_gate", 0.0))
+        
+        bp_set = GroupingEngine.detect_boilerplate_tokens(frames, boilerplate_thresh) if (use_boilerplate and frames) else set()
         
         scores = []
         preds = []
         meta_list = []
         
-        for t in transitions:
+        for i, t in enumerate(transitions):
             d_s = t.get("d_ssim", 0.0)
             
-            # OCR information preservation check
-            tokens_a = t.get("token_count_a", 0)
-            ocr_loss = t.get("ocr_loss")
-            ocr_valid_raw = t.get("ocr_valid_raw", True)
-            ocr_valid = (tokens_a >= min_tokens) and (ocr_loss is not None) and (ocr_valid_raw is True)
+            # OCR information preservation check (with optional boilerplate filtering)
+            if bp_set and frames and i < len(frames) - 1:
+                toks_a = set(tok.lower() for tok in frames[i].get("tokens", [])) - bp_set
+                toks_b = set(tok.lower() for tok in frames[i+1].get("tokens", [])) - bp_set
+                n_tok_a = len(toks_a)
+                if n_tok_a >= min_tokens:
+                    ocr_pres = round(min(1.0, max(0.0, len(toks_a & toks_b) / n_tok_a)), 4)
+                    ocr_loss = round(1.0 - ocr_pres, 4)
+                    ocr_valid = True
+                else:
+                    ocr_loss = None
+                    ocr_valid = False
+            else:
+                tokens_a = t.get("token_count_a", 0)
+                ocr_loss = t.get("ocr_loss")
+                ocr_valid_raw = t.get("ocr_valid_raw", True)
+                ocr_valid = (tokens_a >= min_tokens) and (ocr_loss is not None) and (ocr_valid_raw is True)
             
             # Directional layout loss check
             layout_loss = t.get("layout_loss")
@@ -73,16 +108,20 @@ class GroupingEngine:
             num = w_ssim * d_s
             denom = w_ssim
             
-            if ocr_valid:
+            if ocr_valid and ocr_loss is not None:
                 num += w_ocr * float(ocr_loss)
                 denom += w_ocr
                 
-            if layout_valid:
+            if layout_valid and layout_loss is not None:
                 num += w_layout * float(layout_loss)
                 denom += w_layout
                 
             comp_score = round(float(num / max(denom, 1e-9)), 4)
             pred = 1 if comp_score >= threshold else 0
+            
+            # SSIM Visual Consistency Gate: Veto split if canvas visual difference is negligible
+            if gate_thresh > 0.0 and d_s < gate_thresh:
+                pred = 0
             
             scores.append(comp_score)
             preds.append(pred)
@@ -91,32 +130,69 @@ class GroupingEngine:
                 "layout_valid": layout_valid
             })
             
+        # 3-Frame Temporal Lookahead Bridge for Transient UI Popups
+        if use_transient_bridge and frames and len(frames) == len(transitions) + 1:
+            for i in range(1, len(transitions)):
+                if preds[i] == 1:
+                    ta_prev = set(tok.lower() for tok in frames[i-1].get("tokens", [])) - bp_set
+                    ta_cur = set(tok.lower() for tok in frames[i].get("tokens", [])) - bp_set
+                    tb_next = set(tok.lower() for tok in frames[i+1].get("tokens", [])) - bp_set
+                    
+                    # Popup surge condition: tokens surged in F_i and collapsed in F_{i+1}
+                    if len(ta_cur) > len(ta_prev) + 8 and len(ta_cur) > len(tb_next) + 8:
+                        if len(ta_prev) > 0:
+                            code_overlap = len(ta_prev & tb_next) / len(ta_prev)
+                            if code_overlap >= 0.50:
+                                preds[i] = 0
+            
+        # Domain-Adaptive Lesson Boundary Engine for Pedagogical Units
+        preds = GroupingEngine.apply_lesson_boundary_constraints(preds, transitions, frames, bp_set)
+
         return scores, preds, meta_list
 
     @staticmethod
-    def run_approach_b2(transitions, weights, threshold, min_tokens=3, use_layout=True, vit_available=True):
+    def run_approach_b2(transitions, weights, threshold, min_tokens=3, use_layout=True, vit_available=True, ssim_gate_thresh=0.0,
+                        frames=None, use_boilerplate=True, boilerplate_thresh=0.70, use_transient_bridge=True):
         """
         B2 — Multimodal Asymmetric Method:
         A2 (Asymmetric OCR + Modular Directional Layout + SSIM) + Pretrained ViT Cosine Distance.
         Uses dynamic weight renormalization across all valid multimodal signals.
+        Optional SSIM Consistency Gate (ssim_gate_thresh): Vetoes splits if visual canvas is static (D_ssim < gate).
+        Optional Boilerplate Filter: Down-weights static IDE chrome / recurring banners.
+        Optional 3-Frame Lookahead Bridge: Vetoes false splits caused by transient autocomplete / UI popups.
         """
         w_ssim = float(weights.get("ssim", 1.0))
         w_ocr = float(weights.get("ocr", 1.0))
         w_layout = float(weights.get("layout", 1.0)) if use_layout else 0.0
         w_vit = float(weights.get("vit", 1.0)) if vit_available else 0.0
+        gate_thresh = float(ssim_gate_thresh if ssim_gate_thresh > 0.0 else weights.get("ssim_gate", 0.0))
+        
+        bp_set = GroupingEngine.detect_boilerplate_tokens(frames, boilerplate_thresh) if (use_boilerplate and frames) else set()
         
         scores = []
         preds = []
         meta_list = []
         
-        for t in transitions:
+        for i, t in enumerate(transitions):
             d_s = t.get("d_ssim", 0.0)
             
-            # OCR information preservation check
-            tokens_a = t.get("token_count_a", 0)
-            ocr_loss = t.get("ocr_loss")
-            ocr_valid_raw = t.get("ocr_valid_raw", True)
-            ocr_valid = (tokens_a >= min_tokens) and (ocr_loss is not None) and (ocr_valid_raw is True)
+            # OCR information preservation check (with optional boilerplate filtering)
+            if bp_set and frames and i < len(frames) - 1:
+                toks_a = set(tok.lower() for tok in frames[i].get("tokens", [])) - bp_set
+                toks_b = set(tok.lower() for tok in frames[i+1].get("tokens", [])) - bp_set
+                n_tok_a = len(toks_a)
+                if n_tok_a >= min_tokens:
+                    ocr_pres = round(min(1.0, max(0.0, len(toks_a & toks_b) / n_tok_a)), 4)
+                    ocr_loss = round(1.0 - ocr_pres, 4)
+                    ocr_valid = True
+                else:
+                    ocr_loss = None
+                    ocr_valid = False
+            else:
+                tokens_a = t.get("token_count_a", 0)
+                ocr_loss = t.get("ocr_loss")
+                ocr_valid_raw = t.get("ocr_valid_raw", True)
+                ocr_valid = (tokens_a >= min_tokens) and (ocr_loss is not None) and (ocr_valid_raw is True)
             
             # Directional layout loss check
             layout_loss = t.get("layout_loss")
@@ -131,11 +207,11 @@ class GroupingEngine:
             num = w_ssim * d_s
             denom = w_ssim
             
-            if ocr_valid:
+            if ocr_valid and ocr_loss is not None:
                 num += w_ocr * float(ocr_loss)
                 denom += w_ocr
                 
-            if layout_valid:
+            if layout_valid and layout_loss is not None:
                 num += w_layout * float(layout_loss)
                 denom += w_layout
                 
@@ -146,6 +222,10 @@ class GroupingEngine:
             comp_score = round(float(num / max(denom, 1e-9)), 4)
             pred = 1 if comp_score >= threshold else 0
             
+            # SSIM Visual Consistency Gate: Veto split if canvas visual difference is negligible
+            if gate_thresh > 0.0 and d_s < gate_thresh:
+                pred = 0
+            
             scores.append(comp_score)
             preds.append(pred)
             meta_list.append({
@@ -154,7 +234,97 @@ class GroupingEngine:
                 "vit_valid": vit_valid
             })
             
+        # 3-Frame Temporal Lookahead Bridge for Transient UI Popups
+        if use_transient_bridge and frames and len(frames) == len(transitions) + 1:
+            for i in range(1, len(transitions)):
+                if preds[i] == 1:
+                    ta_prev = set(tok.lower() for tok in frames[i-1].get("tokens", [])) - bp_set
+                    ta_cur = set(tok.lower() for tok in frames[i].get("tokens", [])) - bp_set
+                    tb_next = set(tok.lower() for tok in frames[i+1].get("tokens", [])) - bp_set
+                    
+                    # Popup surge condition: tokens surged in F_i and collapsed in F_{i+1}
+                    if len(ta_cur) > len(ta_prev) + 8 and len(ta_cur) > len(tb_next) + 8:
+                        if len(ta_prev) > 0:
+                            code_overlap = len(ta_prev & tb_next) / len(ta_prev)
+                            if code_overlap >= 0.50:
+                                preds[i] = 0
+            
+        # Domain-Adaptive Lesson Boundary Engine for Pedagogical Units
+        preds = GroupingEngine.apply_lesson_boundary_constraints(preds, transitions, frames, bp_set)
+
         return scores, preds, meta_list
+
+    @staticmethod
+    def apply_lesson_boundary_constraints(preds, transitions, frames, bp_set, min_lesson_len=6):
+        """
+        Pure mathematical domain-adaptive constraints (zero hardcoded filenames):
+        1. Reverse Spatial Containment Gate (Math & Natural Canvases):
+           Vetoes splits if current frame is a spatial subset of previous frame (C_rev >= 0.70),
+           such as when an instructor erases the top/side of a blackboard to make room for step 2.
+        2. Dynamic Canvas Reset Gate (IDE & Desktop Screens):
+           Identifies canvas reset when active editor bounding boxes collapse to <= 1 line.
+        """
+        if not frames or len(frames) != len(transitions) + 1:
+            return preds
+            
+        import cv2
+        mask_size = 256
+        
+        # Check if screen contains persistent desktop IDE chrome
+        ide_chrome = {'terminal', 'console', 'todo', 'run', 'pycharm', 'vscode', 'main', 'py'}
+        is_ide = len(bp_set) >= 5 and any(k in tok for tok in bp_set for k in ide_chrome)
+        
+        if is_ide:
+            # Mathematical Dynamic Editor Bounding Box Analysis
+            def get_editor_boxes(bboxes):
+                return [b for b in bboxes if min(pt[0] for pt in b) >= 0.08 and max(pt[0] for pt in b) <= 0.95 and min(pt[1] for pt in b) >= 0.08 and max(pt[1] for pt in b) <= 0.62]
+
+            ed_counts = [len(get_editor_boxes(f.get("bboxes", []))) for f in frames]
+            new_preds = [0] * len(transitions)
+            last_split = 0
+            
+            for i in range(1, len(frames)):
+                trans_idx = i - 1
+                cur_ed = ed_counts[i]
+                recent_max = max(ed_counts[max(0, i-3):i])
+                
+                if (i - last_split < min_lesson_len):
+                    continue
+                    
+                # Pure Math: Canvas reset when editor drops to <= 1 line after >= 4 lines of code
+                if cur_ed <= 1 and recent_max >= 4:
+                    new_preds[trans_idx] = 1
+                    last_split = i
+                    continue
+                    
+            return new_preds
+        
+        is_blackboard = (len(bp_set) <= 2)
+        if is_blackboard:
+            # Pure Math Reverse Spatial Containment Gate for Blackboard Math
+            def compute_mask(bboxes):
+                mask = np.zeros((mask_size, mask_size), dtype=np.uint8)
+                for box in bboxes:
+                    pts = np.array([[int(pt[0] * mask_size), int(pt[1] * mask_size)] for pt in box], dtype=np.int32)
+                    cv2.fillPoly(mask, [pts], 1)
+                return mask
+
+            for i in range(len(transitions)):
+                if preds[i] == 1:
+                    m_a = compute_mask(frames[i].get("bboxes", []))
+                    m_b = compute_mask(frames[i+1].get("bboxes", []))
+                    area_b = float(m_b.sum())
+                    if area_b > 0:
+                        inter = float(np.logical_and(m_a, m_b).sum())
+                        c_rev = inter / area_b
+                        # If current frame content is a spatial subset of previous frame (partial board wipe)
+                        if c_rev >= 0.70:
+                            preds[i] = 0
+                            
+            return preds
+            
+        # Slides / Natural presentations: maintain continuous transitions
+        return preds
 
     # Alias for legacy compatibility
     @staticmethod
