@@ -13,6 +13,7 @@ from modules.batch_dataset_generator import render_batch_dataset_generator
 from modules.dataset_combiner import render_dataset_combiner
 from modules.l2_grouping_lab import render_l2_grouping_lab
 from modules.l2_keyframe_lab import render_l2_keyframe_lab
+from modules.l2_manual_keyframe_curator import render_manual_keyframe_curator
 
 # --- Safe Index Helper ---
 def safe_index(options, value, default=0):
@@ -546,6 +547,7 @@ modules_options = [
     "L1 Inference",
     "Dataset Combiner",
     "Level 2 Grouping Lab",
+    "Manual Keyframe Selector",
     "Level 2.2 Keyframe Lab"
 ]
 
@@ -567,6 +569,7 @@ if selected_module not in (
     "L1 Inference",
     "Dataset Combiner",
     "Level 2 Grouping Lab",
+    "Manual Keyframe Selector",
     "Level 2.2 Keyframe Lab"
 ):
     st.sidebar.markdown("<h4 style='color: #ffffff; margin-top: 20px; margin-bottom: 0px;'>OCR Model Tuning</h4>", unsafe_allow_html=True)
@@ -796,20 +799,11 @@ st.markdown("<h1 class='main-title'>MY RESEARCH LAB FOR EXPERIMENTS</h1>", unsaf
 st.markdown("<p class='subtitle'>Experimental test harness and batch session manager evaluating DBNet text-region classifiers for digital slides and blackboard frames.</p>", unsafe_allow_html=True)
 
 # --- Top Navigation Tabs ---
-modules_list = [
-    "Single Frame Cropper",
-    "Batch Crop Manager",
-    "Candidate Frame Selector",
-    "Pairwise Feature Vector Lab",
-    "Batch Dataset Generator",
-    "L1 Inference",
-    "Dataset Combiner",
-    "Level 2 Grouping Lab",
-    "Level 2.2 Keyframe Lab"
-]
+modules_list = modules_options
 tab_cols = st.columns(len(modules_list), gap="small")
 
 def select_module_cb(module_name):
+    st.session_state["_redirect_module"] = module_name
     st.session_state["selected_module"] = module_name
 
 for idx, name in enumerate(modules_list):
@@ -843,6 +837,9 @@ elif selected_module == "Dataset Combiner":
     render_dataset_combiner()
 elif selected_module == "Level 2 Grouping Lab":
     render_l2_grouping_lab()
+elif selected_module == "Manual Keyframe Selector":
+    render_manual_keyframe_curator()
 elif selected_module == "Level 2.2 Keyframe Lab":
     render_l2_keyframe_lab()
+
 

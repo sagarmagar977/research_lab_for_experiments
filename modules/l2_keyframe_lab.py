@@ -20,7 +20,15 @@ def get_image_b64_src(path, max_dim=720):
     return None
 
 def render_l2_keyframe_lab():
-    st.markdown("### Level 2.2 — Minimal Informative Keyframe Selection Lab")
+    col_t_title, col_t_jump = st.columns([2.5, 1.5])
+    with col_t_title:
+        st.markdown("### Level 2.2 — Minimal Informative Keyframe Selection Lab")
+    with col_t_jump:
+        def goto_manual_curator():
+            st.session_state["_redirect_module"] = "Manual Keyframe Selector"
+            st.session_state["selected_module"] = "Manual Keyframe Selector"
+        st.button("🎯 Open Manual Keyframe Selector", type="primary", use_container_width=True, on_click=goto_manual_curator)
+
     st.write(
         "Dedicated research interface for **Level 2.2 Keyframe Selection**. "
         "Consumes temporal lesson groups produced by **Level 2.1** and selects the minimal informative subset "
@@ -35,10 +43,14 @@ def render_l2_keyframe_lab():
     # 1. SESSION & LEVEL 2.1 RUN INGESTION
     # -------------------------------------------------------------
     st.markdown("#### 1. Ingest Level 2.1 Session & Partition")
-    all_sessions = sorted([d for d in os.listdir(sessions_root) if os.path.isdir(os.path.join(sessions_root, d))], reverse=True)
-    if not all_sessions:
+    all_raw_sessions = sorted([d for d in os.listdir(sessions_root) if os.path.isdir(os.path.join(sessions_root, d))], reverse=True)
+    if not all_raw_sessions:
         st.info("No sessions found in `sessions/`. Please run Level 1 or batch cropping first.")
         return
+
+    # Prioritize sessions with completed Level 2 runs
+    valid_l2_sessions = [d for d in all_raw_sessions if os.path.exists(os.path.join(sessions_root, d, "level2", "grouping_runs.json"))]
+    all_sessions = valid_l2_sessions + [d for d in all_raw_sessions if d not in valid_l2_sessions]
 
     col_s1, col_s2, col_s3 = st.columns([1.5, 1.5, 1])
 
