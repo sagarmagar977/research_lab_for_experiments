@@ -33,7 +33,7 @@ from modules.l2.reporting import (
     get_level2_dir
 )
 
-def get_image_b64_src(path, max_dim=720):
+def get_image_b64_src(path, max_dim=None):
     b64 = get_cached_thumbnail_b64(path, max_dim=max_dim)
     if b64:
         return f"data:image/jpeg;base64,{b64}"
@@ -505,12 +505,12 @@ def render_l2_grouping_lab():
                 d_c1, d_c2, d_c3 = st.columns([1, 1, 1.5])
                 with d_c1:
                     st.caption(f"**Frame A (Fi):** `{fa_name}` ({div['timestamp_a']})")
-                    b64_a = get_image_b64_src(path_a, max_dim=720)
+                    b64_a = get_image_b64_src(path_a)
                     if b64_a:
                         st.markdown(f"<img src='{b64_a}' style='width:100%; border-radius:8px; border:1px solid #3f3f46; display:block;'>", unsafe_allow_html=True)
                 with d_c2:
                     st.caption(f"**Frame B (Fi+1):** `{fb_name}` ({div['timestamp_b']})")
-                    b64_b = get_image_b64_src(path_b, max_dim=720)
+                    b64_b = get_image_b64_src(path_b)
                     if b64_b:
                         st.markdown(f"<img src='{b64_b}' style='width:100%; border-radius:8px; border:1px solid #71717a; display:block;'>", unsafe_allow_html=True)
                 with d_c3:
@@ -628,7 +628,7 @@ def render_l2_grouping_lab():
                         with cols[f_idx]:
                             fr_name = fr["filename"]
                             fr_path = os.path.join(target_dir, fr_name)
-                            b64 = get_image_b64_src(fr_path, max_dim=720)
+                            b64 = get_image_b64_src(fr_path)
                             if b64:
                                 st.markdown(
                                     f"<div style='border: 1px solid #27272a; border-radius: 8px; padding: 6px; background-color: #18181b; margin-bottom: 6px;'>"
@@ -706,12 +706,12 @@ def render_l2_grouping_lab():
         
         c_im1, c_im2, c_ctrl = st.columns([1.2, 1.2, 2])
         with c_im1:
-            b64_a = get_image_b64_src(path_a, max_dim=720)
+            b64_a = get_image_b64_src(path_a)
             if b64_a:
                 st.markdown(f"<img src='{b64_a}' style='width:100%; border-radius:6px; display:block;'>", unsafe_allow_html=True)
             st.caption(f"`{fa_name}` ({t['timestamp_a']})")
         with c_im2:
-            b64_b = get_image_b64_src(path_b, max_dim=720)
+            b64_b = get_image_b64_src(path_b)
             if b64_b:
                 st.markdown(f"<img src='{b64_b}' style='width:100%; border-radius:6px; display:block;'>", unsafe_allow_html=True)
             st.caption(f"`{fb_name}` ({t['timestamp_b']})")
@@ -1083,7 +1083,7 @@ def render_l2_grouping_lab():
                     with cols[f_idx]:
                         fr_name = fr["filename"]
                         fr_path = os.path.join(target_dir, fr_name)
-                        b64 = get_image_b64_src(fr_path, max_dim=720)
+                        b64 = get_image_b64_src(fr_path)
                         is_sel = fr_name in selected_names_set
 
                         if is_sel:

@@ -14,8 +14,8 @@ from modules.image_cache import (
     get_cache_stats
 )
 
-def get_image_base64(path, max_dim=400):
-    """Retrieves thumbnail from fast in-memory cache or computes it immediately."""
+def get_image_base64(path, max_dim=None):
+    """Retrieves thumbnail from fast in-memory cache or computes it immediately (defaults to full native resolution)."""
     b64 = get_cached_thumbnail_b64(path, max_dim=max_dim)
     if b64 and not b64.startswith("data:"):
         return f"data:image/jpeg;base64,{b64}"

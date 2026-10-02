@@ -1,6 +1,8 @@
 import os
 import json
+import time
 import datetime
+import traceback
 from typing import Dict, List, Optional, Tuple, Set
 import numpy as np
 import pandas as pd
@@ -13,7 +15,7 @@ from modules.l2.feature_extractor import load_cached_features, parse_timestamp_f
 from modules.l2.quality_cache import load_or_compute_quality_cache, resolve_candidate_image_dir
 from modules.l2.keyframe_selector import KeyframeSelectorL2_2
 
-def get_image_b64_src(path, max_dim=720):
+def get_image_b64_src(path, max_dim=400):
     b64 = get_cached_thumbnail_b64(path, max_dim=max_dim)
     if b64:
         return f"data:image/jpeg;base64,{b64}"
@@ -27,7 +29,9 @@ def render_l2_keyframe_lab():
         def goto_manual_curator():
             st.session_state["_redirect_module"] = "Manual Keyframe Selector"
             st.session_state["selected_module"] = "Manual Keyframe Selector"
+            st.session_state["_module_selector_widget"] = "Manual Keyframe Selector"
         st.button("🎯 Open Manual Keyframe Selector", type="primary", use_container_width=True, on_click=goto_manual_curator)
+
 
     st.write(
         "Dedicated research interface for **Level 2.2 Keyframe Selection**. "
@@ -58,6 +62,7 @@ def render_l2_keyframe_lab():
         chosen_session = st.selectbox("Select Session", all_sessions, key="l2_2_standalone_sess_pick")
 
     session_path = os.path.join(sessions_root, chosen_session)
+    print(f"[L2.2 DEBUG] Ingesting session: '{chosen_session}'", flush=True)
     l2_dir = os.path.join(session_path, "level2")
     runs_file = os.path.join(l2_dir, "grouping_runs.json")
 
@@ -67,10 +72,12 @@ def render_l2_keyframe_lab():
     has_l2_runs = os.path.exists(runs_file)
 
     if not has_l2_features:
+        print(f"[L2.2 WARN] Session '{chosen_session}' missing L2 features.", flush=True)
         st.warning(f"Session `{chosen_session}` does not have Level 2 precomputed features. Please compute features in Level 2 Grouping Lab first.")
         return
 
     if not has_l2_runs:
+        print(f"[L2.2 WARN] Session '{chosen_session}' missing grouping_runs.json.", flush=True)
         st.warning(f"Session `{chosen_session}` does not have saved Level 2.1 grouping runs (`grouping_runs.json`). Please execute Level 2.1 grouping first.")
         return
 
@@ -87,17 +94,20 @@ def render_l2_keyframe_lab():
         available_partitions["A1: Frozen Baseline"] = run_data["approach_a1"]["groups"]
 
     if not available_partitions:
+        print(f"[L2.2 ERROR] Session '{chosen_session}' has no valid partitions in grouping_runs.json.", flush=True)
         st.warning("No valid partitions found in `grouping_runs.json`.")
         return
 
     with col_s2:
-        chosen_part_label = st.selectbox("Level 2.1 Group Partition", list(available_partitions.keys()), index=0, key="l2_2_standalone_part_pick")
+        part_key = f"l2_2_part_{chosen_session}"
+        chosen_part_label = st.selectbox("Level 2.1 Group Partition", list(available_partitions.keys()), index=0, key=part_key)
         active_groups = available_partitions[chosen_part_label]
 
     # Resolve candidate image directory
     try:
         cand_img_dir = resolve_candidate_image_dir(session_path)
-    except FileNotFoundError:
+    except FileNotFoundError as fnf_err:
+        print(f"[L2.2 ERROR] Could not locate candidate images directory in '{session_path}': {fnf_err}", flush=True)
         st.error(f"Could not locate candidate images directory in `{session_path}`.")
         return
 
@@ -127,7 +137,8 @@ def render_l2_keyframe_lab():
                 "C: Multiset + Spatial (16x16 Grid)",
                 "E1: D + Gated ViT Diversity",
                 "E2: D + Gated ViT + Event Evidence",
-                "Compare All Modes Side-by-Side (A-E2)"
+                "F: Approach 7 (Set Selection / Facility Location)",
+                "Compare All Modes Side-by-Side (A-F)"
             ],
             index=0,
             key="l2_2_standalone_mode_pick"
@@ -139,7 +150,9 @@ def render_l2_keyframe_lab():
             f"Group {g['group_id']} ({g['frame_count']} frames | {g['start_timestamp']} -> {g['end_timestamp']})"
             for g in active_groups
         ]
-        selected_scope = st.selectbox("Processing Scope", group_opts, index=0, key="l2_2_standalone_scope_pick")
+        scope_key = f"l2_2_scope_{chosen_session}_{chosen_part_label.split(':')[0]}"
+        selected_scope = st.selectbox("Processing Scope", group_opts, index=0, key=scope_key)
+
 
     with st.expander("⚙️ Advanced Experimental Hyperparameters", expanded=False):
         hp_c1, hp_c2, hp_c3 = st.columns(3)
@@ -206,7 +219,7 @@ def render_l2_keyframe_lab():
                 gid = int(selected_scope.split()[1])
                 target_group = next((g for g in active_groups if g["group_id"] == gid), active_groups[0])
 
-            modes_list = ["A", "B", "C", "D", "E1", "E2"]
+            modes_list = ["A", "B", "C", "D", "E1", "E2", "F"]
             comp_rows = []
             res_dict = {}
 
@@ -235,7 +248,8 @@ def render_l2_keyframe_lab():
                         "C": "Multiset + Spatial (16x16)",
                         "D": "Quality-Steered",
                         "E1": "D + Gated ViT Diversity",
-                        "E2": "D + Gated ViT + Event Evidence"
+                        "E2": "D + Gated ViT + Event Evidence",
+                        "F": "Approach 7 (Set Selection / Facility Location)"
                     }[m],
                     "Selected Count": res_m["selected_count"],
                     "Input Count": res_m["input_frame_count"],
@@ -261,24 +275,33 @@ def render_l2_keyframe_lab():
         # SCENARIO B: BATCH ALL GROUPS (FULL SESSION VISUAL GALLERY)
         # -------------------------------------------------------------
         elif selected_scope == "Batch All Groups":
-            batch_results = KeyframeSelectorL2_2.run_all_groups(
-                groups=active_groups,
-                mode=mode_code,
-                tau_coverage=tau_cov,
-                epsilon_info=eps_info,
-                w_spatial=w_spatial,
-                w_vit=w_vit,
-                w_event=w_event,
-                tau_event_ocr=tau_ev_ocr,
-                tau_event_ssim=tau_ev_ssim,
-                event_direction=ev_dir,
-                vit_embeddings=vit_dict,
-                cached_transitions_map=trans_lookup,
-                quality_map=quality_lookup
-            )
-
+            print(f"[L2.2 DEBUG] Running Batch All Groups (Session: '{chosen_session}', Mode: '{mode_code}', Groups: {len(active_groups)})...", flush=True)
+            t_batch_start = time.time()
+            try:
+                batch_results = KeyframeSelectorL2_2.run_all_groups(
+                    groups=active_groups,
+                    mode=mode_code,
+                    tau_coverage=tau_cov,
+                    epsilon_info=eps_info,
+                    w_spatial=w_spatial,
+                    w_vit=w_vit,
+                    w_event=w_event,
+                    tau_event_ocr=tau_ev_ocr,
+                    tau_event_ssim=tau_ev_ssim,
+                    event_direction=ev_dir,
+                    vit_embeddings=vit_dict,
+                    cached_transitions_map=trans_lookup,
+                    quality_map=quality_lookup
+                )
+            except Exception as e:
+                print(f"[L2.2 ERROR] Batch selection execution failed: {e}", flush=True)
+                traceback.print_exc()
+                st.error(f"Batch selection failed: {e}")
+                return
             tot_input = sum(r["input_frame_count"] for r in batch_results)
             tot_selected = sum(r["selected_count"] for r in batch_results)
+            print(f"[L2.2 DEBUG] Batch selection finished in {time.time() - t_batch_start:.3f}s. Selected: {tot_selected}/{tot_input} frames.", flush=True)
+
             avg_cov = np.mean([r["final_coverage"] for r in batch_results]) if batch_results else 0.0
             overall_comp = (1.0 - (tot_selected / max(tot_input, 1))) * 100
 
@@ -333,7 +356,7 @@ def render_l2_keyframe_lab():
                         with cols[k_idx]:
                             fr_name = kf["filename"]
                             fr_path = os.path.join(cand_img_dir, fr_name)
-                            b64 = get_image_b64_src(fr_path, max_dim=720)
+                            b64 = get_image_b64_src(fr_path)
 
                             if b64:
                                 st.markdown(
@@ -428,21 +451,31 @@ def render_l2_keyframe_lab():
             gid = int(selected_scope.split()[1])
             target_group = next((g for g in active_groups if g["group_id"] == gid), active_groups[0])
 
-            res = KeyframeSelectorL2_2.select_group_keyframes(
-                group_dict=target_group,
-                mode=mode_code,
-                tau_coverage=tau_cov,
-                epsilon_info=eps_info,
-                w_spatial=w_spatial,
-                w_vit=w_vit,
-                w_event=w_event,
-                tau_event_ocr=tau_ev_ocr,
-                tau_event_ssim=tau_ev_ssim,
-                event_direction=ev_dir,
-                vit_embeddings=vit_dict,
-                cached_transitions_map=trans_lookup,
-                quality_map=quality_lookup
-            )
+            print(f"[L2.2 DEBUG] Running single group selection on Group {target_group['group_id']} (Mode: '{mode_code}', Frames: {target_group['frame_count']})...", flush=True)
+            t_single_start = time.time()
+            try:
+                res = KeyframeSelectorL2_2.select_group_keyframes(
+                    group_dict=target_group,
+                    mode=mode_code,
+                    tau_coverage=tau_cov,
+                    epsilon_info=eps_info,
+                    w_spatial=w_spatial,
+                    w_vit=w_vit,
+                    w_event=w_event,
+                    tau_event_ocr=tau_ev_ocr,
+                    tau_event_ssim=tau_ev_ssim,
+                    event_direction=ev_dir,
+                    vit_embeddings=vit_dict,
+                    cached_transitions_map=trans_lookup,
+                    quality_map=quality_lookup
+                )
+            except Exception as e:
+                print(f"[L2.2 ERROR] Single group selection failed: {e}", flush=True)
+                traceback.print_exc()
+                st.error(f"Group keyframe selection failed: {e}")
+                return
+            print(f"[L2.2 DEBUG] Single group selection finished in {time.time() - t_single_start:.3f}s. Selected: {res['selected_count']}/{res['input_frame_count']} keyframes.", flush=True)
+
 
             sm1, sm2, sm3, sm4 = st.columns(4)
             with sm1:
@@ -478,7 +511,7 @@ def render_group_frame_gallery(group_dict: Dict, selected_filenames: List[str], 
             with cols[f_idx]:
                 fr_name = fr["filename"]
                 fr_path = os.path.join(cand_img_dir, fr_name)
-                b64 = get_image_b64_src(fr_path, max_dim=720)
+                b64 = get_image_b64_src(fr_path)
                 is_sel = fr_name in selected_names_set
 
                 if is_sel:

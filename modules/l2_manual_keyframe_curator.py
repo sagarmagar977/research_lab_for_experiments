@@ -19,8 +19,8 @@ from modules.l2.quality_cache import load_or_compute_quality_cache, resolve_cand
 from modules.l2.keyframe_selector import KeyframeSelectorL2_2
 from modules.l2.diagnostic_comparator import KeyframeDiagnosticComparator
 
-def get_image_base64(path: str, max_dim: int = 400) -> Optional[str]:
-    """Retrieves thumbnail from fast in-memory cache or computes it immediately."""
+def get_image_base64(path: str, max_dim: Optional[int] = None) -> Optional[str]:
+    """Retrieves thumbnail from fast in-memory cache or computes it immediately (defaults to full native resolution)."""
     b64 = get_cached_thumbnail_b64(path, max_dim=max_dim)
     if b64 and not b64.startswith("data:"):
         return f"data:image/jpeg;base64,{b64}"
@@ -495,7 +495,7 @@ def render_manual_keyframe_curator():
                 with cols[c_idx]:
                     fname = fr["filename"]
                     fpath = os.path.join(cand_img_dir, fname)
-                    img_b64 = get_image_base64(fpath, max_dim=400)
+                    img_b64 = get_image_base64(fpath)
                     
                     gt_rec = gt_dict.get(fname)
                     cur_role = gt_rec.get("role_type") if gt_rec else None
@@ -927,7 +927,7 @@ def render_diagnostic_gap_studio(
                 badge = "🏆 FINAL" if r_type == "final" else "📌 STATE"
                 b_color = "#10b981" if r_type == "final" else "#06b6d4"
                 fpath = os.path.join(cand_img_dir, kf)
-                b64 = get_image_base64(fpath, max_dim=400)
+                b64 = get_image_base64(fpath)
                 st.markdown(
                     f"<div style='border:2px solid {b_color}; border-radius:8px; padding:6px; margin-bottom:8px;'>"
                     f"<div style='color:{b_color}; font-size:0.75rem; font-weight:700;'>{badge} — {kf}</div>"
@@ -947,7 +947,7 @@ def render_diagnostic_gap_studio(
                 hit_badge = "✅ MATCHED HUMAN" if is_hit else "⚠️ SPURIOUS (FP)"
                 b_color = "#10b981" if is_hit else "#ef4444"
                 fpath = os.path.join(cand_img_dir, kf)
-                b64 = get_image_base64(fpath, max_dim=400)
+                b64 = get_image_base64(fpath)
                 st.markdown(
                     f"<div style='border:2px solid {b_color}; border-radius:8px; padding:6px; margin-bottom:8px;'>"
                     f"<div style='color:{b_color}; font-size:0.75rem; font-weight:700;'>{hit_badge} — {kf}</div>"
@@ -1012,7 +1012,40 @@ def render_keyframe_showcase_and_export(
 
     st.markdown("---")
 
-    sub_f, sub_s = st.tabs([f"🏆 Final Keyframes ({len(finals)})", f"📌 State Keyframes ({len(states)})"])
+    tab_all, sub_f, sub_s = st.tabs([
+        f"🖼️ All Keyframes ({total})",
+        f"🏆 Final Keyframes ({len(finals)})",
+        f"📌 State Keyframes ({len(states)})"
+    ])
+
+    with tab_all:
+        all_kfs = sorted(
+            list(gt_dict.keys()),
+            key=lambda fn: (gt_dict[fn].get("group_id", 0), gt_dict[fn].get("timestamp_sec", 0.0), fn)
+        )
+        cols_per_row = 4
+        for r in range(0, len(all_kfs), cols_per_row):
+            chunk = all_kfs[r : r + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for i, fn in enumerate(chunk):
+                with cols[i]:
+                    r_type = gt_dict[fn].get("role_type", "")
+                    is_final = (r_type == "final")
+                    badge_label = "🏆 FINAL" if is_final else "📌 STATE"
+                    b_color = "#10b981" if is_final else "#06b6d4"
+                    bg_color = "rgba(16, 185, 129, 0.08)" if is_final else "rgba(6, 182, 212, 0.08)"
+
+                    fpath = os.path.join(cand_img_dir, fn)
+                    b64 = get_image_base64(fpath)
+                    st.markdown(
+                        f"<div style='border:2px solid {b_color}; border-radius:8px; padding:6px; background-color:{bg_color}; margin-bottom:6px;'>"
+                        f"<div style='color:{b_color}; font-size:0.7rem; font-weight:700;'>{badge_label}</div>"
+                        f"<img src='{b64}' style='width:100%; border-radius:6px; display:block;'/>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                    st.caption(f"`{fn}` | Group {gt_dict[fn].get('group_id')} | {gt_dict[fn].get('timestamp_str', '')}")
+
     with sub_f:
         if not finals:
             st.info("No final keyframes tagged.")
@@ -1024,7 +1057,7 @@ def render_keyframe_showcase_and_export(
                 for i, fn in enumerate(chunk):
                     with cols[i]:
                         fpath = os.path.join(cand_img_dir, fn)
-                        b64 = get_image_base64(fpath, max_dim=400)
+                        b64 = get_image_base64(fpath)
                         st.markdown(
                             f"<div style='border:2px solid #10b981; border-radius:8px; padding:6px; margin-bottom:6px;'>"
                             f"<div style='color:#10b981; font-size:0.7rem; font-weight:700;'>🏆 FINAL</div>"
@@ -1032,7 +1065,7 @@ def render_keyframe_showcase_and_export(
                             f"</div>",
                             unsafe_allow_html=True
                         )
-                        st.caption(f"`{fn}` | Group {gt_dict[fn].get('group_id')}")
+                        st.caption(f"`{fn}` | Group {gt_dict[fn].get('group_id')} | {gt_dict[fn].get('timestamp_str', '')}")
 
     with sub_s:
         if not states:
@@ -1045,7 +1078,7 @@ def render_keyframe_showcase_and_export(
                 for i, fn in enumerate(chunk):
                     with cols[i]:
                         fpath = os.path.join(cand_img_dir, fn)
-                        b64 = get_image_base64(fpath, max_dim=400)
+                        b64 = get_image_base64(fpath)
                         st.markdown(
                             f"<div style='border:2px solid #06b6d4; border-radius:8px; padding:6px; margin-bottom:6px;'>"
                             f"<div style='color:#06b6d4; font-size:0.7rem; font-weight:700;'>📌 STATE</div>"
@@ -1053,4 +1086,4 @@ def render_keyframe_showcase_and_export(
                             f"</div>",
                             unsafe_allow_html=True
                         )
-                        st.caption(f"`{fn}` | Group {gt_dict[fn].get('group_id')}")
+                        st.caption(f"`{fn}` | Group {gt_dict[fn].get('group_id')} | {gt_dict[fn].get('timestamp_str', '')}")

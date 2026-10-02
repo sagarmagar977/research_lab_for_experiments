@@ -12,3 +12,11 @@ gatherUsageStats = false
 headless = true
 port = 8501
 maxUploadSize = 2048
+
+[client]
+showErrorDetails = "full"
+
+[logger]
+level = "info"
+messageFormat = "%(asctime)s [%(levelname)s] %(message)s"
+

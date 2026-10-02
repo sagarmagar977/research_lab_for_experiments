@@ -23,15 +23,23 @@ def clear_image_cache():
         _IMAGE_CACHE.clear()
         _ACTIVE_WORKERS.clear()
 
-def _create_thumbnail_b64(path, max_dim=720):
-    """Creates a high-definition JPEG thumbnail base64 string from an image path."""
+def _create_thumbnail_b64(path, max_dim=None):
+    """Creates a base64 string from an image path. Preserves 100% native resolution and original byte fidelity if max_dim is None."""
+    if not max_dim:
+        try:
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except Exception:
+            pass
+
     try:
         with Image.open(path) as img:
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+            if max_dim and max_dim > 0 and (img.width > max_dim or img.height > max_dim):
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=92, optimize=True)
+            img.save(buf, format="JPEG", quality=95, optimize=True)
             return base64.b64encode(buf.getvalue()).decode()
     except Exception:
         try:
@@ -40,15 +48,16 @@ def _create_thumbnail_b64(path, max_dim=720):
         except Exception:
             return ""
 
-def get_cached_thumbnail_b64(path, max_dim=720):
+def get_cached_thumbnail_b64(path, max_dim=None):
     """
-    Retrieves thumbnail from in-memory cache or computes it immediately.
-    Keyed by absolute canonical path and dimension to prevent cross-resolution collisions.
+    Retrieves image from in-memory cache or computes it immediately.
+    Defaults to full native resolution (max_dim=None) with no downscaling or blur.
     """
     if not path:
         return ""
         
-    key = f"{_norm_path(path)}@{max_dim}"
+    dim_tag = max_dim if max_dim else "native"
+    key = f"{_norm_path(path)}@{dim_tag}"
     if key in _IMAGE_CACHE:
         return _IMAGE_CACHE[key]
         
@@ -67,15 +76,13 @@ def get_cache_stats(paths):
     total = len(paths)
     cached = 0
     for p in paths:
-        if _norm_path(p) in _IMAGE_CACHE:
+        if f"{_norm_path(p)}@native" in _IMAGE_CACHE or _norm_path(p) in _IMAGE_CACHE:
             cached += 1
     return cached, total
 
 def trigger_background_session_prefetch(paths, current_page=1, page_size=24, session_key=None):
     """
-    Asynchronously pre-warms all remaining session frames into RAM cache.
-    Stage 1: Immediately warms the next page and previous page.
-    Stage 2: Progressively warms all remaining frames across all pages.
+    Asynchronously pre-warms all remaining session frames into RAM cache at native full resolution.
     Yields CPU (1ms sleep) to ensure main UI rendering is completely uninhibited.
     """
     if not paths:
@@ -94,36 +101,35 @@ def trigger_background_session_prefetch(paths, current_page=1, page_size=24, ses
 
     def _worker():
         try:
-            # 1. Immediate priority: Next Page (frames user is most likely to click next)
+            # 1. Immediate priority: Next Page
             start_next = current_page * page_size
             end_next = min(start_next + page_size, len(paths))
             if start_next < len(paths):
                 for p in paths[start_next:end_next]:
-                    k = _norm_path(p)
+                    k = f"{_norm_path(p)}@native"
                     if k not in _IMAGE_CACHE:
-                        t = _create_thumbnail_b64(p)
+                        t = _create_thumbnail_b64(p, max_dim=None)
                         if t:
                             _IMAGE_CACHE[k] = t
 
-            # 2. Priority: Previous Page (if user is beyond page 1)
+            # 2. Priority: Previous Page
             if current_page > 1:
                 start_prev = max(0, (current_page - 2) * page_size)
                 end_prev = start_prev + page_size
                 for p in paths[start_prev:end_prev]:
-                    k = _norm_path(p)
+                    k = f"{_norm_path(p)}@native"
                     if k not in _IMAGE_CACHE:
-                        t = _create_thumbnail_b64(p)
+                        t = _create_thumbnail_b64(p, max_dim=None)
                         if t:
                             _IMAGE_CACHE[k] = t
 
             # 3. Stage 2: Progressively warm all frames of every page in the session
             for p in paths:
-                k = _norm_path(p)
+                k = f"{_norm_path(p)}@native"
                 if k not in _IMAGE_CACHE:
-                    t = _create_thumbnail_b64(p)
+                    t = _create_thumbnail_b64(p, max_dim=None)
                     if t:
                         _IMAGE_CACHE[k] = t
-                # Cooperative yield to prevent CPU starvation
                 time.sleep(0.001)
 
         finally:

@@ -551,16 +551,23 @@ modules_options = [
     "Level 2.2 Keyframe Lab"
 ]
 
-if "selected_module" not in st.session_state:
-    st.session_state["selected_module"] = modules_options[0]
-elif st.session_state["selected_module"] not in modules_options:
+if "selected_module" not in st.session_state or st.session_state["selected_module"] not in modules_options:
     st.session_state["selected_module"] = modules_options[0]
 
-selected_module = st.sidebar.selectbox(
+def _on_sidebar_module_change():
+    st.session_state["selected_module"] = st.session_state["_sidebar_module_widget"]
+
+curr_module_idx = safe_index(modules_options, st.session_state["selected_module"], default=0)
+st.sidebar.selectbox(
     "Select Lab Module",
     modules_options,
-    key="selected_module"
+    index=curr_module_idx,
+    key="_sidebar_module_widget",
+    on_change=_on_sidebar_module_change
 )
+selected_module = st.session_state["selected_module"]
+print(f"[NAV DEBUG] Render module: '{selected_module}'", flush=True)
+
 
 # --- Dynamic Sidebar Rendering Based on Selected Module ---
 if selected_module not in (
@@ -577,13 +584,11 @@ if selected_module not in (
     model_mode = st.sidebar.radio(
         "Execution Engine / Mode",
         model_mode_options,
-        index=safe_index(model_mode_options, st.session_state["model_mode"]),
         key="model_mode"
     )
 
     use_english_ocr = st.sidebar.checkbox(
         "Use English-Only OCR Models",
-        value=st.session_state["use_english_ocr"],
         key="use_english_ocr",
         help="Forces English-specific recognition weights. Fixes word concatenation issues in coding tutorials."
     )
@@ -595,20 +600,17 @@ if selected_module not in (
     preprocess_mode = st.sidebar.selectbox(
         "Preprocessing Mode",
         preprocess_mode_options,
-        index=safe_index(preprocess_mode_options, st.session_state["preprocess_mode"]),
         key="preprocess_mode"
     )
 
     use_blur = st.sidebar.checkbox(
         "Apply Gaussian Blur",
-        value=st.session_state["use_blur"],
         key="use_blur"
     )
 
     blur_kernel_size = st.sidebar.slider(
         "Blur Kernel Size",
         min_value=3, max_value=15,
-        value=st.session_state["blur_kernel_size"],
         step=2,
         disabled=not use_blur,
         key="blur_kernel_size"
@@ -616,15 +618,14 @@ if selected_module not in (
 
     use_dilation = st.sidebar.checkbox(
         "Enable Morphological Dilation",
-        value=st.session_state["use_dilation"],
         key="use_dilation"
     )
 
     col_w, col_h = st.sidebar.columns(2)
     with col_w:
-        dilation_w = st.slider("Kernel Width", min_value=3, max_value=51, value=st.session_state["dilation_w"], step=2, disabled=not use_dilation, key="dilation_w")
+        dilation_w = st.slider("Kernel Width", min_value=3, max_value=51, step=2, disabled=not use_dilation, key="dilation_w")
     with col_h:
-        dilation_h = st.sidebar.slider("Kernel Height", min_value=3, max_value=51, value=st.session_state["dilation_h"], step=2, disabled=not use_dilation, key="dilation_h")
+        dilation_h = st.sidebar.slider("Kernel Height", min_value=3, max_value=51, step=2, disabled=not use_dilation, key="dilation_h")
 
     st.sidebar.markdown("---")
 
@@ -633,15 +634,14 @@ if selected_module not in (
     crop_mode = st.sidebar.radio(
         "Crop Boundary Mode",
         crop_mode_options,
-        index=safe_index(crop_mode_options, st.session_state["crop_mode"]),
         key="crop_mode"
     )
 
-    ocr_tolerance_px = st.sidebar.slider("OCR Line Tolerance (px)", min_value=5, max_value=40, value=st.session_state["ocr_tolerance_px"], key="ocr_tolerance_px")
-    det_db_thresh = st.sidebar.slider("Detection Score Threshold", min_value=0.10, max_value=0.90, value=st.session_state["det_db_thresh"], step=0.05, key="det_db_thresh")
-    det_db_unclip_ratio = st.sidebar.slider("Box Unclip Ratio", min_value=1.0, max_value=3.0, value=st.session_state["det_db_unclip_ratio"], step=0.1, key="det_db_unclip_ratio")
-    padding_px = st.sidebar.slider("Padding (px)", min_value=0, max_value=100, value=st.session_state["padding_px"], key="padding_px")
-    min_area_filter = st.sidebar.slider("Min Area Filter (% of Frame)", min_value=0.1, max_value=10.0, value=st.session_state["min_area_filter"], step=0.1, key="min_area_filter")
+    ocr_tolerance_px = st.sidebar.slider("OCR Line Tolerance (px)", min_value=5, max_value=40, key="ocr_tolerance_px")
+    det_db_thresh = st.sidebar.slider("Detection Score Threshold", min_value=0.10, max_value=0.90, step=0.05, key="det_db_thresh")
+    det_db_unclip_ratio = st.sidebar.slider("Box Unclip Ratio", min_value=1.0, max_value=3.0, step=0.1, key="det_db_unclip_ratio")
+    padding_px = st.sidebar.slider("Padding (px)", min_value=0, max_value=100, key="padding_px")
+    min_area_filter = st.sidebar.slider("Min Area Filter (% of Frame)", min_value=0.1, max_value=10.0, step=0.1, key="min_area_filter")
 
     st.sidebar.markdown("---")
 
@@ -650,13 +650,12 @@ if selected_module not in (
     ocr_preprocess_mode = st.sidebar.selectbox(
         "OCR Preprocessing Mode",
         ocr_preprocess_mode_options,
-        index=safe_index(ocr_preprocess_mode_options, st.session_state["ocr_preprocess_mode"]),
         key="ocr_preprocess_mode"
     )
-    ocr_use_blur = st.sidebar.checkbox("OCR Apply Blur", value=st.session_state["ocr_use_blur"], key="ocr_use_blur")
-    ocr_blur_kernel = st.sidebar.slider("OCR Blur Kernel Size", min_value=3, max_value=15, value=st.session_state["ocr_blur_kernel"], step=2, disabled=not ocr_use_blur, key="ocr_blur_kernel")
-    ocr_det_db_thresh = st.sidebar.slider("OCR Score Threshold", min_value=0.10, max_value=0.90, value=st.session_state["ocr_det_db_thresh"], step=0.05, key="ocr_det_db_thresh")
-    ocr_det_db_unclip_ratio = st.sidebar.slider("OCR Box Unclip Ratio", min_value=1.0, max_value=3.0, value=st.session_state["ocr_det_db_unclip_ratio"], step=0.1, key="ocr_det_db_unclip_ratio")
+    ocr_use_blur = st.sidebar.checkbox("OCR Apply Blur", key="ocr_use_blur")
+    ocr_blur_kernel = st.sidebar.slider("OCR Blur Kernel Size", min_value=3, max_value=15, step=2, disabled=not ocr_use_blur, key="ocr_blur_kernel")
+    ocr_det_db_thresh = st.sidebar.slider("OCR Score Threshold", min_value=0.10, max_value=0.90, step=0.05, key="ocr_det_db_thresh")
+    ocr_det_db_unclip_ratio = st.sidebar.slider("OCR Box Unclip Ratio", min_value=1.0, max_value=3.0, step=0.1, key="ocr_det_db_unclip_ratio")
 
     st.sidebar.markdown("---")
 
@@ -664,7 +663,6 @@ if selected_module not in (
     empty_strategy = st.sidebar.selectbox(
         "Empty Frame Strategy",
         empty_strategy_options,
-        index=safe_index(empty_strategy_options, st.session_state["empty_strategy"]),
         key="empty_strategy"
     )
 
@@ -675,33 +673,28 @@ else:
     hist_bins = st.sidebar.selectbox(
         "Histogram Bins",
         hist_bins_opts,
-        index=safe_index(hist_bins_opts, st.session_state["hist_bins"]),
         key="hist_bins"
     )
     hist_method_opts = ["Correlation", "Chi-Square", "Intersection", "Bhattacharyya"]
     hist_method = st.sidebar.selectbox(
         "Comparison Method",
         hist_method_opts,
-        index=safe_index(hist_method_opts, st.session_state["hist_method"]),
         key="hist_method"
     )
     color_mode_opts = ["Grayscale", "RGB"]
     color_mode = st.sidebar.selectbox(
         "Color Mode",
         color_mode_opts,
-        index=safe_index(color_mode_opts, st.session_state["color_mode"]),
         key="color_mode"
     )
     hist_grid_size_opts = [2, 3, 4, 5, 8]
     hist_grid_size = st.sidebar.selectbox(
         "Grid Size (Histogram)",
         hist_grid_size_opts,
-        index=safe_index(hist_grid_size_opts, st.session_state["hist_grid_size"]),
         key="hist_grid_size"
     )
     hist_epsilon = st.sidebar.number_input(
         "Histogram Epsilon",
-        value=st.session_state["hist_epsilon"],
         format="%.1e",
         key="hist_epsilon"
     )
@@ -712,17 +705,15 @@ else:
     edge_blur = st.sidebar.selectbox(
         "Gaussian Blur",
         edge_blur_opts,
-        index=safe_index(edge_blur_opts, st.session_state["edge_blur"]),
         key="edge_blur"
     )
-    canny_low = st.sidebar.slider("Canny Lower Threshold", min_value=0, max_value=255, value=st.session_state["canny_low"], key="canny_low")
-    canny_high = st.sidebar.slider("Canny Upper Threshold", min_value=0, max_value=255, value=st.session_state["canny_high"], key="canny_high")
+    canny_low = st.sidebar.slider("Canny Lower Threshold", min_value=0, max_value=255, key="canny_low")
+    canny_high = st.sidebar.slider("Canny Upper Threshold", min_value=0, max_value=255, key="canny_high")
     
     edge_grid_size_opts = [2, 3, 4, 5, 8]
     edge_grid_size = st.sidebar.selectbox(
         "Grid Size (Edge)",
         edge_grid_size_opts,
-        index=safe_index(edge_grid_size_opts, st.session_state["edge_grid_size"]),
         key="edge_grid_size"
     )
     
@@ -732,24 +723,22 @@ else:
     ssim_win_size = st.sidebar.selectbox(
         "Window Size",
         ssim_win_opts,
-        index=safe_index(ssim_win_opts, st.session_state["ssim_win_size"]),
         key="ssim_win_size"
     )
-    ssim_gaussian = st.sidebar.checkbox("Gaussian Weights", value=st.session_state["ssim_gaussian"], key="ssim_gaussian")
+    ssim_gaussian = st.sidebar.checkbox("Gaussian Weights", key="ssim_gaussian")
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("<h4 style='color: #ffffff; margin-bottom: 0px;'>Text Occupancy Tuning</h4>", unsafe_allow_html=True)
-    text_thresh = st.sidebar.slider("Binary Threshold", min_value=0, max_value=255, value=st.session_state["text_thresh"], key="text_thresh")
+    text_thresh = st.sidebar.slider("Binary Threshold", min_value=0, max_value=255, key="text_thresh")
     
     text_kernel_opts = [3, 5, 7, 9]
     text_kernel = st.sidebar.selectbox(
         "Morphological Kernel Size",
         text_kernel_opts,
-        index=safe_index(text_kernel_opts, st.session_state["text_kernel"]),
         key="text_kernel"
     )
-    text_iterations = st.sidebar.slider("Dilation Iterations", min_value=1, max_value=5, value=st.session_state["text_iterations"], key="text_iterations")
-    text_min_area = st.sidebar.slider("Minimum Component Area", min_value=10, max_value=500, value=st.session_state["text_min_area"], key="text_min_area")
+    text_iterations = st.sidebar.slider("Dilation Iterations", min_value=1, max_value=5, key="text_iterations")
+    text_min_area = st.sidebar.slider("Minimum Component Area", min_value=10, max_value=500, key="text_min_area")
 
 # Save current settings to file dynamically
 OCR_KEYS = {
@@ -803,8 +792,11 @@ modules_list = modules_options
 tab_cols = st.columns(len(modules_list), gap="small")
 
 def select_module_cb(module_name):
+    print(f"[NAV DEBUG] User clicked top tab: '{module_name}'", flush=True)
     st.session_state["_redirect_module"] = module_name
     st.session_state["selected_module"] = module_name
+    st.session_state["_sidebar_module_widget"] = module_name
+
 
 for idx, name in enumerate(modules_list):
     is_active = (selected_module == name)

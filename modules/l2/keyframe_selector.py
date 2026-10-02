@@ -147,10 +147,43 @@ class KeyframeSelectorL2_2:
         group_frame_names = [f["filename"] for f in group_frames]
         n_frames = len(group_frames)
 
+        # F. PRECOMPUTE SIMILARITY MATRIX (MODE F - SET SELECTION)
+        vit_sim_matrix = None
+        if mode == "F":
+            vit_sim_matrix = np.zeros((n_frames, n_frames))
+            V = []
+            valid_mask = []
+            for f in group_frames:
+                v = vit_embeddings.get(f["filename"])
+                if v is not None and len(v) > 0:
+                    V.append(v)
+                    valid_mask.append(True)
+                else:
+                    V.append(np.zeros(512)) # dummy shape, doesn't matter
+                    valid_mask.append(False)
+            
+            V = np.array(V)
+            if V.ndim == 2 and V.shape[0] == n_frames:
+                norms = np.linalg.norm(V, axis=1, keepdims=True)
+                norms[norms == 0] = 1.0
+                V_norm = V / norms
+                vit_sim_matrix = np.dot(V_norm, V_norm.T)
+                
+                # Fix up invalid mask rows/cols
+                for i in range(n_frames):
+                    for j in range(n_frames):
+                        if not valid_mask[i] or not valid_mask[j]:
+                            vit_sim_matrix[i, j] = 1.0 if i == j else 0.0
+
         # -------------------------------------------------------------
         # 3. GREEDY SELECTION LOOP
         # -------------------------------------------------------------
         while True:
+            max_sim_to_K = np.zeros(n_frames)
+            if mode == "F" and selected_frames:
+                selected_indices = [k for k, fr in enumerate(group_frames) if fr in selected_frames]
+                max_sim_to_K = np.max(vit_sim_matrix[:, selected_indices], axis=1)
+
             # Unweighted pedagogical coverage calculation
             if mode == "A":
                 cov_lex = len(covered_lex_set) / max(total_lex, 1)
@@ -234,8 +267,13 @@ class KeyframeSelectorL2_2:
                             event_score = float(ocr_loss)
                             event_multiplier = float(w_event) * event_score
 
-                # Multiplicative candidate utility score
-                candidate_score = raw_info_gain * q_factor * (1.0 + vit_multiplier + event_multiplier)
+                if mode == "F":
+                    diffs = vit_sim_matrix[:, idx] - max_sim_to_K
+                    fac_gain = np.sum(np.maximum(0.0, diffs))
+                    candidate_score = fac_gain / max(n_frames, 1)
+                else:
+                    # Multiplicative candidate utility score
+                    candidate_score = raw_info_gain * q_factor * (1.0 + vit_multiplier + event_multiplier)
 
                 # Deterministic Neutral Tie-Breaking:
                 # 1. Total Score -> 2. Raw Info Gain -> 3. Quality -> 4. Earlier seq index
